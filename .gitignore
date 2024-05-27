@@ -1,0 +1,4 @@
+#file to ignore
+
+nodemon.json
+node_modules/
