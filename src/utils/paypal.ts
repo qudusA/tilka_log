@@ -9,13 +9,13 @@
 //     data: "grant_type=client_credentials",
 //     auth: {
 //       username:
-//         "AffUeV4Z_pGK4KU7sid8NtnU5ihN9OP6Iq-PRkjVwaRFOIvCglgniP4IkkDv1TTb5l1Q-QAFSDEf1lPz",
+//         "",
 //       password:
-//         "EJk5cc0DswhOGOrtMtU5oNHyYqC17v2yEaXFI3xXz2QfSfEH3ABm7mWPEPQEqcsVUDRmb36gDnBoq47s",
+//         "",
 //     },
 
-//     // "PAYPAL_CLIENT_ID": "AffUeV4Z_pGK4KU7sid8NtnU5ihN9OP6Iq-PRkjVwaRFOIvCglgniP4IkkDv1TTb5l1Q-QAFSDEf1lPz",
-//     // "PAYPAL_SECRET": "EJk5cc0DswhOGOrtMtU5oNHyYqC17v2yEaXFI3xXz2QfSfEH3ABm7mWPEPQEqcsVUDRmb36gDnBoq47s",
+//     // "PAYPAL_CLIENT_ID": "",
+//     // "PAYPAL_SECRET": "",
 //   });
 
 //   //   console.log(process.env.PAYPAL_CLIENT_ID);
@@ -40,8 +40,8 @@
 //         {
 //           items: [
 //             {
-//               name: "Node.js Complete Course",
-//               description: "Node.js Complete Course with Express and MongoDB",
+//               name: "",
+//               description: "",
 //               quantity: 1,
 //               unit_amount: {
 //                 currency_code: "USD",
