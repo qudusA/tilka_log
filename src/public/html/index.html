@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Order Tracking</title>
+    <script src="../js/script.js"></script>
+    <!-- <script src="/socket.io/socket.io.js" defer></script> -->
+    <!-- <script
+      src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+      integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+      crossorigin="anonymous"
+    ></script> -->
+
+    <!-- <script src="/js/socket.io.min.js"></script> -->
+    <!-- <script defer>
+      document.addEventListener("DOMContentLoaded", () => {
+        const socket = io("http://localhost:3000/ip");
+
+        // Replace with actual user ID and role
+        const userId = "buyerId123";
+        const role = "buyer";
+        console.log("bbbbbbbbbb");
+
+        // Register user with server
+        socket.emit("register", userId, role);
+
+        const trackOrderButton = document.getElementById("trackOrderButton");
+        trackOrderButton.addEventListener("click", () => {
+          const orderId = document.getElementById("orderId").value;
+          socket.emit("trackOrder", orderId, userId);
+        });
+
+        socket.on("driverLocation", (data) => {
+          document.getElementById("latitude").textContent = data.lat;
+          document.getElementById("longitude").textContent = data.lon;
+        });
+      });
+    </script> -->
+    <!-- <script src="driverScript.js" defer></script> -->
+  </head>
+  <body>
+    <h1>Order Tracking</h1>
+    <p>Order ID: <input type="text" id="orderId" /></p>
+    <button id="trackOrderButton">Track Order</button>
+    <p>Driver Location:</p>
+    <p>Latitude: <span id="latitude"></span></p>
+    <p>Longitude: <span id="longitude"></span></p>
+    <p>count: <span id="count"></span></p>
+  </body>
+</html>

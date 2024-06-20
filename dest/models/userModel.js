@@ -43,7 +43,7 @@ User.init({
         },
     },
     role: {
-        type: sequelize_1.DataTypes.STRING,
+        type: sequelize_1.DataTypes.ENUM("user", "admin", "seller", "courier"),
         allowNull: false,
         defaultValue: "user",
         validate: {

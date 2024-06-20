@@ -1,6 +1,7 @@
 import { Model, Optional, DataTypes } from "sequelize";
 
 import sequelize from "../utils/sequelize";
+import CartItems, { CartsItemsType } from "./cartsItems";
 
 export interface ProductAttribute {
   id?: number;
@@ -31,6 +32,10 @@ class ProductModel
   public categories!: string;
   public createdAt?: Date;
   public updatedAt?: Date;
+
+  public createCartItems!: (
+    cartItems: Partial<CartsItemsType>
+  ) => Promise<CartItems>;
 }
 
 ProductModel.init(

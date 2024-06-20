@@ -38,12 +38,15 @@ class SignUpController {
     constructor() { }
     postSignUp(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             const transaction = yield sequelize_1.default.transaction();
             try {
                 const error = (0, express_validator_1.validationResult)(req);
                 const err = new ErrorResponse_1.ErrorResponse("invalid data input", "error", 422, error.array());
-                if (!error.isEmpty())
+                if (!error.isEmpty()) {
+                    transaction.rollback();
                     return res.status(422).json(err);
+                }
                 const salt = yield bcrypt_1.default.genSalt(12);
                 const hashPassword = yield bcrypt_1.default.hash(req.body.password, salt);
                 let userName = "";
@@ -55,22 +58,36 @@ class SignUpController {
                             Math.trunc(Math.random() * 100) +
                             1;
                 }
+                else {
+                    userName = req.body.userName;
+                }
                 const user = yield userModel_1.default.create({
                     email: req.body.email,
                     password: hashPassword,
                     fullName: req.body.fullName,
                     userName: userName,
                 }, { transaction });
-                const _a = user.dataValues, { password } = _a, rest = __rest(_a, ["password"]);
+                let id, addres;
+                const { state, city, zip, country, houseNumber, street } = req.body;
+                if (state !== undefined &&
+                    city !== undefined &&
+                    zip !== undefined &&
+                    country !== undefined &&
+                    street !== undefined &&
+                    houseNumber !== undefined) {
+                    let address = yield user.createAddress({
+                        city,
+                        country,
+                        state,
+                        street,
+                        houseNumber,
+                        zip,
+                    }, { transaction });
+                    (_a = address.dataValues, { id } = _a, addres = __rest(_a, ["id"]));
+                }
+                const _b = user.dataValues, { password } = _b, rest = __rest(_b, ["password"]);
                 const token = (0, uuid_1.v4)();
-                const redirect = `http://${req.headers.host}${req.url}/verify?id=${rest.id}&token=${token}`;
-                // user.createToken(
-                //   {
-                //     token,
-                //     expirationTime: new Date(Date.now() + 1000 * 60 * 10),
-                //   },
-                //   { transaction }
-                // );
+                const redirect = `${req.protocol}://${req.headers.host}${req.url}/verify?id=${rest.id}&token=${token}`;
                 const generateToken = new generateToken_1.default(token, user);
                 yield generateToken.saveToken(transaction);
                 const transport = nodemailer_1.default.createTransport({
@@ -98,8 +115,8 @@ class SignUpController {
                 res.status(201).json({
                     status: "created",
                     statusCode: 201,
-                    message: "user created successfully, kindly check your mail for verification",
-                    data: Object.assign({}, rest),
+                    message: `user created successfully, kindly check your mail for verification, if you don not get any kindly try to signup with this email ${user.email} in the next 1 hr or use another email `,
+                    data: Object.assign(Object.assign({}, rest), addres),
                 });
             }
             catch (err) {
@@ -143,6 +160,7 @@ class SignUpController {
                     where: { email },
                     transaction,
                 });
+                console.log("found user...", foundUser, email);
                 if (!foundUser)
                     throw new ErrorResponse_1.ErrorResponse("invalid email or password...", "errror", 404, {});
                 if (!foundUser.isVerified)
@@ -150,7 +168,12 @@ class SignUpController {
                 const doMatch = yield bcrypt_1.default.compare(password, foundUser.password);
                 if (!doMatch)
                     throw new ErrorResponse_1.ErrorResponse("invalid email or password....", "error", 404, {});
-                const jwToken = yield jsonwebtoken_1.default.sign({ email, userId: foundUser.id, isUserVerified: foundUser.isVerified, role: foundUser.role }, process.env.TOKEN_SECRET, { expiresIn: "1h" });
+                const jwToken = yield jsonwebtoken_1.default.sign({
+                    email,
+                    userId: foundUser.id,
+                    isUserVerified: foundUser.isVerified,
+                    role: foundUser.role,
+                }, process.env.TOKEN_SECRET, { expiresIn: "1h" });
                 // jwt.sign()
                 yield transaction.commit();
                 res.status(200).json({
@@ -207,7 +230,7 @@ class SignUpController {
         `,
                 };
                 yield transport.sendMail(options);
-                const redirect = `http://${req.headers.host}${req.url}/reset-password/${foundUser.id}`;
+                const redirect = `${req.protocol}://${req.headers.host}${req.url}/reset-password/${foundUser.id}`;
                 yield transaction.commit();
                 res.status(201).json({
                     status: "created",
@@ -230,6 +253,7 @@ class SignUpController {
             const { password, token } = req.body;
             const transaction = yield sequelize_1.default.transaction();
             const error = (0, express_validator_1.validationResult)(req);
+            console.log(id, password, token);
             const err = new ErrorResponse_1.ErrorResponse("invalid data input", "error", 422, error.array());
             if (!error.isEmpty())
                 return res.status(422).json(err);

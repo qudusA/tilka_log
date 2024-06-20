@@ -33,7 +33,6 @@ const Auth = (req, res, next) => {
         req.isUserVerified = decode.isUserVerified;
         req.role = decode.role;
         req.isAuth = true;
-        console.log("auth...............");
         next();
     }
     catch (error) {

@@ -2,8 +2,14 @@ import { DataTypes, Model, Optional, Transaction } from "sequelize";
 import sequelize from "../utils/sequelize";
 import Token, { TokenAttributes } from "./tokenModel";
 import ProductModel, { ProductAttribute } from "./product";
+import carts, { CartsType } from "./cartsModel";
 
-interface UserAttributes {
+import CartItems, { CartsItemsType } from "./cartsItems";
+import Address, { AddressType } from "./addressModel";
+import Order, { OrderType } from "./order";
+import Delivery from "./delivery";
+
+export interface UserAttributes {
   id: number;
   email: string;
   userName: string;
@@ -24,7 +30,7 @@ export class User
   public userName!: string;
   public fullName!: string;
   public password!: string;
-  public role!: string;
+  public role!: "user" | "admin" | "seller" | "courier";
   public isVerified!: boolean;
 
   public createToken!: (
@@ -32,10 +38,34 @@ export class User
     Optional?: any
   ) => Promise<Token>;
 
+  public createAddress!: (
+    address: Partial<AddressType>,
+    Optional?: any
+  ) => Promise<Address>;
+
+  public getAddresses!: (query: any) => Promise<Address[]>;
+
   public createProduct!: (
     product: Partial<ProductAttribute>,
     Optional?: any
   ) => Promise<ProductModel>;
+
+  public createCart!: () => Promise<carts>;
+  // public createCart!: (cart: Partial<CartsItemsType>) => Promise<CartItems>;
+
+  public getProducts!: (obj: {}) => Promise<ProductModel[]>;
+
+  public getCart!: () => Promise<carts>;
+
+  public createOrder!: (
+    order: Partial<OrderType>,
+    Optional?: any
+  ) => Promise<Order>;
+
+  public ctreateDeliverys!: (
+    val: Array<OrderType>,
+    Optional?: any
+  ) => Promise<Array<Delivery>>;
 }
 
 User.init(
@@ -77,7 +107,7 @@ User.init(
       },
     },
     role: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM("user", "admin", "seller", "courier"),
       allowNull: false,
       defaultValue: "user",
       validate: {

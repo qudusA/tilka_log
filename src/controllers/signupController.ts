@@ -12,6 +12,7 @@ import InputValidation from "../utils/inputValidation";
 
 import userModel from "../models/userModel";
 import tokenModel from "../models/tokenModel";
+import Address from "../models/addressModel";
 import { SignupEntity } from "../entity/signupEntity";
 import { Ok } from "../response/ok/okResponse";
 import { ErrorResponse } from "../response/error/ErrorResponse";
@@ -28,7 +29,6 @@ export class SignUpController {
 
     try {
       const error = validationResult(req);
-
       const err = new ErrorResponse(
         "invalid data input",
         "error",
@@ -36,7 +36,10 @@ export class SignUpController {
         error.array()
       );
 
-      if (!error.isEmpty()) return res.status(422).json(err);
+      if (!error.isEmpty()) {
+        transaction.rollback();
+        return res.status(422).json(err);
+      }
 
       const salt = await bcrypt.genSalt(12);
       const hashPassword = await bcrypt.hash(req.body.password, salt);
@@ -48,6 +51,8 @@ export class SignUpController {
           names[1][0].toUpperCase() +
           Math.trunc(Math.random() * 100) +
           1;
+      } else {
+        userName = req.body.userName;
       }
 
       const user = await userModel.create(
@@ -60,19 +65,38 @@ export class SignUpController {
         { transaction }
       );
 
+      let id, addres;
+
+      const { state, city, zip, country, houseNumber, street } = req.body;
+
+      if (
+        state !== undefined &&
+        city !== undefined &&
+        zip !== undefined &&
+        country !== undefined &&
+        street !== undefined &&
+        houseNumber !== undefined
+      ) {
+        let address = await user.createAddress(
+          {
+            city,
+            country,
+            state,
+            street,
+            houseNumber,
+            zip,
+          },
+          { transaction }
+        );
+
+        ({ id, ...addres } = address.dataValues);
+      }
+
       const { password, ...rest } = user.dataValues;
 
       const token = uuidv4();
 
-      const redirect = `http://${req.headers.host}${req.url}/verify?id=${rest.id}&token=${token}`;
-
-      // user.createToken(
-      //   {
-      //     token,
-      //     expirationTime: new Date(Date.now() + 1000 * 60 * 10),
-      //   },
-      //   { transaction }
-      // );
+      const redirect = `${req.protocol}://${req.headers.host}${req.url}/verify?id=${rest.id}&token=${token}`;
 
       const generateToken = new GenerateToken(token, user);
       await generateToken.saveToken(transaction);
@@ -105,9 +129,8 @@ export class SignUpController {
       res.status(201).json({
         status: "created",
         statusCode: 201,
-        message:
-          "user created successfully, kindly check your mail for verification",
-        data: { ...rest },
+        message: `user created successfully, kindly check your mail for verification, if you don not get any kindly try to signup with this email ${user.email} in the next 1 hr or use another email `,
+        data: { ...rest, ...addres },
       });
     } catch (err) {
       await transaction.rollback();
@@ -193,7 +216,12 @@ export class SignUpController {
         );
 
       const jwToken = await jwt.sign(
-        { email, userId: foundUser.id, isUserVerified: foundUser.isVerified, role:foundUser.role },
+        {
+          email,
+          userId: foundUser.id,
+          isUserVerified: foundUser.isVerified,
+          role: foundUser.role,
+        },
         process.env.TOKEN_SECRET!,
         { expiresIn: "1h" }
       );
@@ -273,7 +301,7 @@ export class SignUpController {
       };
       await transport.sendMail(options);
 
-      const redirect = `http://${req.headers.host}${req.url}/reset-password/${foundUser.id}`;
+      const redirect = `${req.protocol}://${req.headers.host}${req.url}/reset-password/${foundUser.id}`;
       await transaction.commit();
 
       res.status(201).json({
@@ -299,7 +327,7 @@ export class SignUpController {
     const { password, token } = req.body;
     const transaction = await sequelize.transaction();
     const error = validationResult(req);
-
+    console.log(id, password, token);
     const err = new ErrorResponse(
       "invalid data input",
       "error",

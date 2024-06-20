@@ -14,9 +14,11 @@ class GenerateToken {
         this.expirationTime = new Date(Date.now() + 1000 * 60 * 10);
         this.token = token;
         this.instance = instance;
+        console.log("we got to the constructor...");
     }
     saveToken(transaction) {
         return __awaiter(this, void 0, void 0, function* () {
+            console.log("we saved here as well");
             return yield this.instance.createToken({
                 token: this.token,
                 expirationTime: this.expirationTime,

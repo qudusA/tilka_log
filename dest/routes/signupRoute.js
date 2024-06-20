@@ -16,6 +16,7 @@ const express_1 = require("express");
 const express_validator_1 = require("express-validator");
 const userModel_1 = __importDefault(require("../models/userModel"));
 const signupController_1 = require("../controllers/signupController");
+const axios_1 = __importDefault(require("axios"));
 const { postSignUp, postVerify, postLogin, postForgetPassword, postPasswordReset, } = new signupController_1.SignUpController();
 const router = (0, express_1.Router)();
 router.post("/signup", [
@@ -25,9 +26,23 @@ router.post("/signup", [
         .normalizeEmail()
         .trim()
         .custom((value_1, _a) => __awaiter(void 0, [value_1, _a], void 0, function* (value, { req }) {
+        const restrictedCountries = [
+            "SERIA",
+            "USA",
+            "UKRAIN",
+            "ISRAEL",
+            // "NIGERIA",
+        ];
+        const response = yield axios_1.default.get("https://api.ipify.org?format=json");
+        const locationResponse = yield axios_1.default.get(`http://ip-api.com/json/${response.data.ip}`);
+        if (locationResponse.data.status === "fail") {
+            return Promise.reject("something went wrong in your location");
+        }
+        if (restrictedCountries.includes(locationResponse.data.country.toUpperCase())) {
+            return Promise.reject("Location country is restricted");
+        }
         if (!/^[\w.-]+@gmail\.com$/.test(value)) {
-            throw new Error("Email must end with gmail.com");
-            // return false;
+            return Promise.reject("Email must end with gmail.com");
         }
         const userInstance = yield userModel_1.default.findOne({
             where: { email: value },
@@ -37,7 +52,7 @@ router.post("/signup", [
         return true;
     })),
     (0, express_validator_1.body)("userName", "user name must be more than 3 character or leave it for it and it will be generated for you...").custom((value) => {
-        if (value.length >= 1 && value.length <= 2)
+        if (value.length <= 2)
             return false;
         return true;
     }),
@@ -73,22 +88,86 @@ router.post("/signup", [
         return true;
     }),
     (0, express_validator_1.body)("role").custom((value, { req }) => {
-        console.log("role", value);
         if (value) {
             if (!["user", "seller", "courier"].includes(value))
                 throw new Error("you can only signup as a user, seller or courier...");
         }
         return true;
     }),
+    (0, express_validator_1.body)("street", "street name can only me alphabet...")
+        .optional()
+        .custom((value, { req }) => {
+        if (!value || typeof value !== "string" || value.trim().length === 0)
+            return false;
+        if (value === null || value === void 0 ? void 0 : value.includes(","))
+            return false;
+        return true;
+    }),
+    (0, express_validator_1.body)("city")
+        .optional()
+        .custom((value, { req }) => {
+        if (!value || typeof value !== "string" || value.trim().length === 0)
+            return false;
+        if (value === null || value === void 0 ? void 0 : value.includes(","))
+            return false;
+        return true;
+    }),
+    (0, express_validator_1.body)("state")
+        .optional()
+        .custom((value, { req }) => {
+        if (!value || typeof value !== "string" || value.trim().length === 0)
+            return false;
+        if (value === null || value === void 0 ? void 0 : value.includes(","))
+            return false;
+        return true;
+    }),
+    (0, express_validator_1.body)("zip", `this is not a valid code`)
+        .isPostalCode("any")
+        .optional()
+        .custom((value, { req }) => {
+        if (value.trim().length === 0 ||
+            typeof value !== "string" ||
+            value === undefined)
+            return false;
+        if (value === null || value === void 0 ? void 0 : value.includes(","))
+            return false;
+        if ((value === null || value === void 0 ? void 0 : value.length) !== 5)
+            return false;
+        return true;
+    }),
+    (0, express_validator_1.body)("houseNumber")
+        .optional()
+        .custom((value, { req }) => {
+        if (value.trim().length === 0 ||
+            typeof value !== "string" ||
+            value === undefined)
+            return false;
+        if (value === null || value === void 0 ? void 0 : value.includes(","))
+            return false;
+        if ((value === null || value === void 0 ? void 0 : value.length) > 5)
+            return false;
+        return true;
+    }),
+    (0, express_validator_1.body)("country")
+        .optional()
+        .custom((value, { req }) => {
+        if (!value || typeof value !== "string" || value.trim().length === 0) {
+            return Promise.reject("Invalid value: non-string or empty string");
+        }
+        if (value.includes(",")) {
+            return Promise.reject("Invalid value: contains a comma");
+        }
+        return true;
+    }),
 ], postSignUp);
-router.post("/signup/verify/", postVerify);
+router.put("/signup/verify/", postVerify);
 router.post("/login", [
     (0, express_validator_1.body)("email")
         .notEmpty()
         .withMessage("email is required...")
         .isEmail()
         .withMessage(" invalid input data")
-        .normalizeEmail()
+        // .normalizeEmail()
         .trim(),
     (0, express_validator_1.body)("password")
         .trim()
@@ -109,21 +188,28 @@ router.post("/forgetpassword", [
         .withMessage("this is not a valid email...")
         .custom((value_2, _b) => __awaiter(void 0, [value_2, _b], void 0, function* (value, { req }) {
         if (!/^[\w.-]+@gmail\.com$/.test(value)) {
-            throw new Error("Email must end with gmail.com");
-            // return false;
+            return Promise.reject("Email must end with gmail.com");
         }
         return true;
     })),
 ], postForgetPassword);
-router.post("/forgetpassword/reset-password/:id", [
-    (0, express_validator_1.body)("password")
+router.put("/forgetpassword/reset-password/:id", [
+    (0, express_validator_1.body)("password", "Password must contain at least one uppercase letter, one lowercase letter, and one number.")
+        .notEmpty()
         .trim()
-        .custom((value, { req }) => {
+        .custom((value) => {
         if (!value)
             throw new Error("password is required...");
         const partter = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{10,}$/;
         const matchParttern = partter.test(value);
         if (!matchParttern)
+            return false;
+        return true;
+    }),
+    (0, express_validator_1.body)("confirmPassword", "password doesn't match...")
+        .notEmpty()
+        .custom((value, { req }) => {
+        if (value !== req.body.password)
             return false;
         return true;
     }),

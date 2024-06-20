@@ -9,9 +9,11 @@ class GenerateToken {
   constructor(token: string, instance: User) {
     this.token = token;
     this.instance = instance;
+    console.log("we got to the constructor...");
   }
 
   public async saveToken(transaction: Transaction) {
+    console.log("we saved here as well");
     return await this.instance.createToken(
       {
         token: this.token,

@@ -13,7 +13,7 @@ ProductModel.init({
         autoIncrement: true,
         primaryKey: true,
     },
-    sellerId: {
+    sellersId: {
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
     },

@@ -30,7 +30,7 @@ class SaveToken {
     ) {
       tokenInstance.isTokenValid = false;
       await tokenInstance.save({ transaction });
-      throw new ErrorResponse("expired token", "error", 404, {});
+      throw new ErrorResponse("expired token", "error", 401, {});
     }
 
     tokenInstance.isTokenValid = false;
