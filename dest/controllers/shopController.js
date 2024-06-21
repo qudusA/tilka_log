@@ -57,15 +57,23 @@ class ShopController {
     static getProductDetails(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const allProduct = yield product_1.default.findOne({
+                const foundProduct = yield product_1.default.findOne({
                     where: { id: req.params.productId },
                     raw: true,
                 });
+                if (!foundProduct) {
+                    res.status(404).json({
+                        message: "product not found",
+                        status: "error",
+                        statusCode: 404,
+                        data: {},
+                    });
+                }
                 res.status(200).json({
                     message: "successful",
                     status: "success",
                     statusCode: 200,
-                    data: Object.assign({}, allProduct),
+                    data: Object.assign({}, foundProduct),
                 });
             }
             catch (error) {
@@ -82,7 +90,7 @@ class ShopController {
                 });
                 const product = yield product_1.default.findByPk(req.params.productId);
                 if (!product) {
-                    const err = new ErrorResponse_1.ErrorResponse("kindly put product image", "401", 404, {});
+                    const err = new ErrorResponse_1.ErrorResponse("", "404", 404, "product not found");
                     return res.status(404).json(err);
                 }
                 const foundProductInCart = yield cartsItems_1.default.findOne({
@@ -126,8 +134,16 @@ class ShopController {
                     const err = new ErrorResponse_1.ErrorResponse("Cart item not found", "401", 404, {});
                     return res.status(404).json(err);
                 }
-                if (cartItem.quantity > 1) {
-                    cartItem.quantity -= 1;
+                const { qty } = req.query;
+                let val;
+                if (!qty) {
+                    val = 1;
+                }
+                else {
+                    val = +qty;
+                }
+                cartItem.quantity += -val;
+                if (cartItem.quantity >= 1) {
                     yield cartItem.save();
                     transaction.commit();
                     return res.status(201).json({
@@ -165,11 +181,19 @@ class ShopController {
                     const err = new ErrorResponse_1.ErrorResponse("Cart item not found", "401", 404, {});
                     return res.status(404).json(err);
                 }
-                cartItem.quantity += 1;
+                const { qty } = req.query;
+                let val;
+                if (!qty) {
+                    val = 1;
+                }
+                else {
+                    val = +qty;
+                }
+                cartItem.quantity += val;
                 yield cartItem.save();
                 transaction.commit();
                 return res.status(201).json({
-                    message: "Product quantity decreased by 1",
+                    message: "Product quantity increase",
                     status: "updated",
                     statusCode: 201,
                     data: cartItem,
@@ -189,7 +213,7 @@ class ShopController {
                     where: { id: req.params.cartId },
                 });
                 if (!cartItem) {
-                    const err = new ErrorResponse_1.ErrorResponse("Cart item not found", "401", 404, {});
+                    const err = new ErrorResponse_1.ErrorResponse("Cart item not found", "404", 404, {});
                     return res.status(404).json(err);
                 }
                 yield cartItem.destroy();
@@ -223,9 +247,13 @@ class ShopController {
                     ],
                 });
                 if (cartItems.length < 1) {
-                    console.log("User cart not found");
-                    const err = new ErrorResponse_1.ErrorResponse("no item in cart...", "404", 404, {});
-                    return res.status(404).json(err);
+                    // const err = new ErrorResponse(, "404", 404, {});
+                    return res.status(404).json({
+                        message: "no item in cart...",
+                        status: "404",
+                        statusCode: 404,
+                        data: {},
+                    });
                 }
                 const totalPrice = cartItems
                     .map((item) => item.toJSON())
@@ -473,13 +501,18 @@ class ShopController {
                 const createdOrderItems = yield orderItems_1.default.bulkCreate(cartArr, {
                     transaction,
                 });
-                userCart.forEach((currentObj) => __awaiter(this, void 0, void 0, function* () {
+                console.log(createdOrderItems, "create");
+                for (const currentObj of userCart) {
                     yield product_1.default.update({
-                        numbersOfProductAvailable: sequelize_1.default.literal(`numbersOfProductAvailable - ${currentObj.quantity}`),
-                    }, { where: { id: currentObj.productId }, transaction });
-                }));
+                        numbersOfProductAvailable: sequelize_1.default.literal(`"numbersOfProductAvailable" - ${currentObj.quantity}`),
+                    }, {
+                        where: { id: currentObj.productId },
+                        transaction,
+                    });
+                }
+                console.log("after for each");
                 yield cartsItems_1.default.destroy({ where: { cartId }, transaction });
-                console.log(JSON.stringify(payment));
+                console.log("after destroy");
                 yield transaction.commit();
                 res.status(201).json({
                     message: "successful",

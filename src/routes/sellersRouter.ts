@@ -11,20 +11,29 @@ router.post(
   "/add-product",
   [
     body("productName")
-      .isAlpha()
-      .withMessage("product name nut be an alphabet"),
-    body("productPrice").isNumeric().withMessage("price must be a number"),
+      .isString()
+      .withMessage(
+        "product name must be alphabet or mixture of alphabet and number"
+      ),
+    body("productPrice", "price must be positive")
+      .isNumeric()
+      .withMessage("price must be a number")
+      .custom((value) => {
+        if (typeof +value === "number" && +value <= 0) return false;
+
+        return true;
+      }),
     body("productImage").custom((value, { req }) => {
       if (!req.file) return false;
 
-      if (!req.file) return false;
-      if (!["jpeg", "jpg", "png"].includes(req.file.mimetype)) return false;
+      if (!["jpeg", "jpg", "png"].includes(req.file.mimetype.split("/")[1]))
+        return false;
 
       return true;
     }),
     body(
       "productDescription",
-      "descripton of product should be mor that 20 character"
+      "descripton of product should be more that 20 character"
     )
       .isString()
       .custom((value, { req }) => {
@@ -38,7 +47,7 @@ router.post(
     )
       .isNumeric()
       .custom((value) => {
-        if (typeof +value === "number" && +value > 0) return false;
+        if (typeof +value === "number" && +value <= 0) return false;
 
         return true;
       }),
@@ -58,19 +67,26 @@ router.put(
   [
     body("productName")
       .optional()
-      .isAlpha()
-      .withMessage("product name nut be an alphabet"),
-    body("productPrice")
+      .isString()
+      .withMessage(
+        "product name must be alphabet or mixture of alphabet and number"
+      ),
+    body("productPrice", "price must be positive")
       .optional()
       .isNumeric()
-      .withMessage("price must be a number"),
+      .withMessage("price must be a number")
+      .custom((value) => {
+        if (typeof +value === "number" && +value <= 0) return false;
+
+        return true;
+      }),
     body("productImage")
       .optional()
       .custom((value, { req }) => {
         if (!req.file) return false;
 
-        if (!req.file) return false;
-        if (!["jpeg", "jpg", "png"].includes(req.file.mimetype)) return false;
+        if (!["jpeg", "jpg", "png"].includes(req.file.mimetype.split("/")[1]))
+          return false;
 
         return true;
       }),
@@ -87,12 +103,12 @@ router.put(
       }),
     body(
       "numbersOfProductAvailable",
-      "number of product must be a positive number or zero"
+      "number of product must be a positive number"
     )
       .optional()
       .isNumeric()
       .custom((value) => {
-        if (typeof +value === "number" && +value >= 0) return false;
+        if (typeof +value === "number" && +value < 0) return false;
 
         return true;
       }),

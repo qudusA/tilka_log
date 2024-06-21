@@ -56,16 +56,14 @@ router.route("/add-address").post(auth_1.default, [
             return false;
         return true;
     }),
-    (0, express_validator_1.body)("zip", `this is not a valid code`)
-        .isPostalCode("any")
-        .custom((value, { req }) => {
+    (0, express_validator_1.body)("zip", `this is not a valid code`).custom((value, { req }) => {
         if (value.trim().length === 0 ||
             typeof value !== "string" ||
             value === undefined)
             return false;
         if (value === null || value === void 0 ? void 0 : value.includes(","))
             return false;
-        if ((value === null || value === void 0 ? void 0 : value.length) !== 5)
+        if ((value === null || value === void 0 ? void 0 : value.length) !== 6)
             return false;
         return true;
     }),

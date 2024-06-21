@@ -9,8 +9,9 @@ export interface ProductAttribute {
   productImageUri: string;
   productName: string;
   productDescription: string;
-  numbersOfProductAvailable: string;
+  numbersOfProductAvailable: number;
   productPrice: number;
+  productStatus?: string;
   categories: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -27,8 +28,9 @@ class ProductModel
   public productImageUri!: string;
   public productName!: string;
   public productDescription!: string;
-  public numbersOfProductAvailable!: string;
+  public numbersOfProductAvailable!: number;
   public productPrice!: number;
+  public productStatus?: string;
   public categories!: string;
   public createdAt?: Date;
   public updatedAt?: Date;
@@ -74,6 +76,28 @@ ProductModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    productStatus: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      // defaultValue: function () {
+      //   return +this.numbersOfProductAvailable === 0 ? "soldOut" : "available";
+      // },
+      // set(val) {
+      //   if (+this.numbersOfProductAvailable === 0) {
+      //     console.log(this.numbersOfProductAvailable, "if");
+      //     this.setDataValue("productStatus", "soldOut");
+      //   } else {
+      //     console.log(this.numbersOfProductAvailable, "else");
+      //     this.setDataValue("productStatus", "available");
+      //   }
+      // },
+      validate: {
+        isIn: {
+          args: [["soldOut", "available"]],
+          msg: "Invalid input, must be 'soldOut' or 'available'",
+        },
+      },
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -83,7 +107,42 @@ ProductModel.init(
       allowNull: false,
     },
   },
-  { sequelize, modelName: "product" }
+
+  {
+    sequelize,
+    modelName: "product",
+    hooks: {
+      // beforeSave: (product: ProductModel, options) => {
+      //   if (+product.numbersOfProductAvailable === 0) {
+      //     product.productStatus = "soldOut";
+      //   } else {
+      //     product.productStatus = "available";
+      //   }
+      // },
+      beforeValidate: (product: ProductModel, options) => {
+        console.log("Before Save Hook:", product.numbersOfProductAvailable);
+        if (+product.numbersOfProductAvailable !== 0) {
+          console.log("else !== 0", product.numbersOfProductAvailable);
+          product.productStatus = "available";
+        } else {
+          console.log("if ===0 ", product.numbersOfProductAvailable);
+          product.productStatus = "soldOut";
+        }
+        console.log("after Save Hook:", product.productStatus);
+      },
+      beforeUpdate: (product: ProductModel, options) => {
+        console.log("before update", product.numbersOfProductAvailable);
+        if (+product.numbersOfProductAvailable !== 0) {
+          console.log("else !=0", product.numbersOfProductAvailable);
+          product.productStatus = "available";
+        } else {
+          console.log("if === 0", product.numbersOfProductAvailable);
+          product.productStatus = "soldOut";
+        }
+        console.log("after Save Hook:", product.productStatus);
+      },
+    },
+  }
 );
 
 export default ProductModel;

@@ -30,34 +30,42 @@ class LogisticController {
                 });
                 if (!foundAdmin) {
                     transaction.rollback();
-                    const error = new ErrorResponse_1.ErrorResponse("user not found", "not found", 404, {});
+                    const error = new ErrorResponse_1.ErrorResponse("admin not found", "not found", 404, "admin not found");
                     return res.status(404).json(error);
                 }
-                const { orderIds } = req.body;
+                const { orderIds } = req.query;
                 const { driverId } = req.params;
-                const foundDriver = yield userModel_1.default.findByPk(driverId);
+                console.log("driver id", driverId);
+                const foundDriver = (yield userModel_1.default.findByPk(driverId));
+                console.log(foundDriver);
                 if (!foundDriver) {
                     transaction.rollback();
-                    const error = new ErrorResponse_1.ErrorResponse("user not found", "not found ", 404, {});
+                    const error = new ErrorResponse_1.ErrorResponse("driver not found", "not found ", 404, "driver not found");
                     return res.status(404).json(error);
                 }
-                if (foundDriver.role !== "courier") {
+                if (foundDriver.dataValues.role !== "courier") {
                     transaction.rollback();
-                    const err = new ErrorResponse_1.ErrorResponse("you can't assign this user", "401", 401, {});
+                    const err = new ErrorResponse_1.ErrorResponse("you can't assign this user", "401", 401, "you can't assign this user");
                     return res.status(401).json(err);
                 }
+                console.log("order id", typeof orderIds, orderIds);
                 const nonProccessOrders = yield order_1.default.findAll({
                     where: {
                         id: { [sequelize_2.Op.in]: orderIds },
                         orderStatus: { [sequelize_2.Op.in]: ["On Hold", "Processing"] },
                     },
                 });
+                console.log("nonProcess", nonProccessOrders);
                 if (nonProccessOrders.length < 1) {
                     transaction.rollback();
-                    const error = new ErrorResponse_1.ErrorResponse("order not found", "not found", 404, {});
+                    const error = new ErrorResponse_1.ErrorResponse("order not found", "not found", 404, "order not found");
+                    transaction.rollback();
                     return res.status(404).json(error);
                 }
-                const deliveries = yield foundDriver.ctreateDeliverys(nonProccessOrders);
+                const deliveries = yield foundDriver.createDeliveries(nonProccessOrders, {
+                    transaction,
+                });
+                console.log("delivery", deliveries);
                 yield order_1.default.update({ orderStatus: "Out for Delivery" }, {
                     where: {
                         id: nonProccessOrders.map((order) => order.id),
@@ -74,6 +82,7 @@ class LogisticController {
             }
             catch (error) {
                 transaction.rollback();
+                throw new Error(error);
                 next(error);
             }
         });

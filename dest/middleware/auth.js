@@ -10,12 +10,12 @@ const Auth = (req, res, next) => {
     try {
         const authHeader = req.get("Authorization");
         if (!authHeader) {
-            const error = new ErrorResponse_1.ErrorResponse("unAuthorized request", "unAuthorized", 401, {});
+            const error = new ErrorResponse_1.ErrorResponse("unAuthorized request", "unAuthorized not logged in", 401, {});
             return res.status(401).json(error);
         }
         const jwt = authHeader.startsWith("Bearer ");
         if (!jwt) {
-            const error = new ErrorResponse_1.ErrorResponse("unAuthorized request", "unAuthorized", 401, {});
+            const error = new ErrorResponse_1.ErrorResponse("unAuthorized request", " unAuthorized not logged in", 401, {});
             return res.status(401).json(error);
         }
         const jwToken = authHeader.split(" ")[1];

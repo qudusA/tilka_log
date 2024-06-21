@@ -160,7 +160,6 @@ class SignUpController {
                     where: { email },
                     transaction,
                 });
-                console.log("found user...", foundUser, email);
                 if (!foundUser)
                     throw new ErrorResponse_1.ErrorResponse("invalid email or password...", "errror", 404, {});
                 if (!foundUser.isVerified)

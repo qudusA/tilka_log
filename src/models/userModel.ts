@@ -62,7 +62,7 @@ export class User
     Optional?: any
   ) => Promise<Order>;
 
-  public ctreateDeliverys!: (
+  public createDelivery!: (
     val: Array<OrderType>,
     Optional?: any
   ) => Promise<Array<Delivery>>;

@@ -139,7 +139,6 @@ router.post(
         return true;
       }),
     body("zip", `this is not a valid code`)
-      .isPostalCode("any")
       .optional()
       .custom((value: string, { req }) => {
         if (
@@ -149,7 +148,7 @@ router.post(
         )
           return false;
         if (value?.includes(",")) return false;
-        if (value?.length !== 5) return false;
+        if (value?.length !== 6) return false;
 
         return true;
       }),
@@ -227,7 +226,6 @@ router.post(
 );
 
 router.put(
-  
   "/forgetpassword/reset-password/:id",
   [
     body(

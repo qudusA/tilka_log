@@ -66,20 +66,18 @@ router.route("/add-address").post(
 
       return true;
     }),
-    body("zip", `this is not a valid code`)
-      .isPostalCode("any")
-      .custom((value: string, { req }) => {
-        if (
-          value.trim().length === 0 ||
-          typeof value !== "string" ||
-          value === undefined
-        )
-          return false;
-        if (value?.includes(",")) return false;
-        if (value?.length !== 5) return false;
+    body("zip", `this is not a valid code`).custom((value: string, { req }) => {
+      if (
+        value.trim().length === 0 ||
+        typeof value !== "string" ||
+        value === undefined
+      )
+        return false;
+      if (value?.includes(",")) return false;
+      if (value?.length !== 6) return false;
 
-        return true;
-      }),
+      return true;
+    }),
     body("houseNumber").custom((value: string, { req }) => {
       if (
         value.trim().length === 0 ||

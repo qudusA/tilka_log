@@ -41,6 +41,28 @@ ProductModel.init({
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
     },
+    productStatus: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: false,
+        // defaultValue: function () {
+        //   return +this.numbersOfProductAvailable === 0 ? "soldOut" : "available";
+        // },
+        // set(val) {
+        //   if (+this.numbersOfProductAvailable === 0) {
+        //     console.log(this.numbersOfProductAvailable, "if");
+        //     this.setDataValue("productStatus", "soldOut");
+        //   } else {
+        //     console.log(this.numbersOfProductAvailable, "else");
+        //     this.setDataValue("productStatus", "available");
+        //   }
+        // },
+        validate: {
+            isIn: {
+                args: [["soldOut", "available"]],
+                msg: "Invalid input, must be 'soldOut' or 'available'",
+            },
+        },
+    },
     createdAt: {
         type: sequelize_1.DataTypes.DATE,
         allowNull: false,
@@ -49,5 +71,41 @@ ProductModel.init({
         type: sequelize_1.DataTypes.DATE,
         allowNull: false,
     },
-}, { sequelize: sequelize_2.default, modelName: "product" });
+}, {
+    sequelize: sequelize_2.default,
+    modelName: "product",
+    hooks: {
+        // beforeSave: (product: ProductModel, options) => {
+        //   if (+product.numbersOfProductAvailable === 0) {
+        //     product.productStatus = "soldOut";
+        //   } else {
+        //     product.productStatus = "available";
+        //   }
+        // },
+        beforeValidate: (product, options) => {
+            console.log("Before Save Hook:", product.numbersOfProductAvailable);
+            if (+product.numbersOfProductAvailable !== 0) {
+                console.log("else !== 0", product.numbersOfProductAvailable);
+                product.productStatus = "available";
+            }
+            else {
+                console.log("if ===0 ", product.numbersOfProductAvailable);
+                product.productStatus = "soldOut";
+            }
+            console.log("after Save Hook:", product.productStatus);
+        },
+        beforeUpdate: (product, options) => {
+            console.log("before update", product.numbersOfProductAvailable);
+            if (+product.numbersOfProductAvailable !== 0) {
+                console.log("else !=0", product.numbersOfProductAvailable);
+                product.productStatus = "available";
+            }
+            else {
+                console.log("if === 0", product.numbersOfProductAvailable);
+                product.productStatus = "soldOut";
+            }
+            console.log("after Save Hook:", product.productStatus);
+        },
+    },
+});
 exports.default = ProductModel;

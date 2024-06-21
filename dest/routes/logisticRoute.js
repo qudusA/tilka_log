@@ -22,8 +22,8 @@ router
         .withMessage("invalid cordinate"),
 ], auth_1.default, shearDriverLocation);
 router
-    .route("/admin/assign-delivery/:orderId")
-    .post(auth_1.default, assignDeliveryToDriver);
+    .route("/admin/assign-delivery/:driverId")
+    .put(auth_1.default, assignDeliveryToDriver);
 // router.route("/:driverId").post(Auth, postNonProcessOrders);
 router.route("/track-driver-location/:orderId").get(auth_1.default, trackDriverLocation);
 exports.default = router;

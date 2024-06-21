@@ -42,6 +42,11 @@ export default class Order
     delivery: Partial<DeliveryAttribute>,
     Optional: {}
   ) => Promise<Delivery>;
+
+  public createUserModels!: (
+    val: Array<OrderType>,
+    Optional?: any
+  ) => Promise<Array<Delivery>>;
 }
 
 Order.init(

@@ -10,19 +10,24 @@ const auth_1 = __importDefault(require("../middleware/auth"));
 const router = (0, express_1.Router)();
 router.post("/add-product", [
     (0, express_validator_1.body)("productName")
-        .isAlpha()
-        .withMessage("product name nut be an alphabet"),
-    (0, express_validator_1.body)("productPrice").isNumeric().withMessage("price must be a number"),
-    (0, express_validator_1.body)("productImage").custom((value, { req }) => {
-        if (!req.file)
-            return false;
-        if (!req.file)
-            return false;
-        if (!["jpeg", "jpg", "png"].includes(req.file.mimetype))
+        .isString()
+        .withMessage("product name must be alphabet or mixture of alphabet and number"),
+    (0, express_validator_1.body)("productPrice", "price must be positive")
+        .isNumeric()
+        .withMessage("price must be a number")
+        .custom((value) => {
+        if (typeof +value === "number" && +value <= 0)
             return false;
         return true;
     }),
-    (0, express_validator_1.body)("productDescription", "descripton of product should be mor that 20 character")
+    (0, express_validator_1.body)("productImage").custom((value, { req }) => {
+        if (!req.file)
+            return false;
+        if (!["jpeg", "jpg", "png"].includes(req.file.mimetype.split("/")[1]))
+            return false;
+        return true;
+    }),
+    (0, express_validator_1.body)("productDescription", "descripton of product should be more that 20 character")
         .isString()
         .custom((value, { req }) => {
         if (!value || value.trim().length === 0)
@@ -34,7 +39,7 @@ router.post("/add-product", [
     (0, express_validator_1.body)("numbersOfProductAvailable", "number of product must be a positive number")
         .isNumeric()
         .custom((value) => {
-        if (typeof +value === "number" && +value > 0)
+        if (typeof +value === "number" && +value <= 0)
             return false;
         return true;
     }),
@@ -46,20 +51,23 @@ router.get("/get-seller-product", auth_1.default, sellersController_1.default.fe
 router.put("/product-update/:prodId", auth_1.default, [
     (0, express_validator_1.body)("productName")
         .optional()
-        .isAlpha()
-        .withMessage("product name nut be an alphabet"),
-    (0, express_validator_1.body)("productPrice")
+        .isString()
+        .withMessage("product name must be alphabet or mixture of alphabet and number"),
+    (0, express_validator_1.body)("productPrice", "price must be positive")
         .optional()
         .isNumeric()
-        .withMessage("price must be a number"),
+        .withMessage("price must be a number")
+        .custom((value) => {
+        if (typeof +value === "number" && +value <= 0)
+            return false;
+        return true;
+    }),
     (0, express_validator_1.body)("productImage")
         .optional()
         .custom((value, { req }) => {
         if (!req.file)
             return false;
-        if (!req.file)
-            return false;
-        if (!["jpeg", "jpg", "png"].includes(req.file.mimetype))
+        if (!["jpeg", "jpg", "png"].includes(req.file.mimetype.split("/")[1]))
             return false;
         return true;
     }),
@@ -73,11 +81,11 @@ router.put("/product-update/:prodId", auth_1.default, [
             return false;
         return true;
     }),
-    (0, express_validator_1.body)("numbersOfProductAvailable", "number of product must be a positive number or zero")
+    (0, express_validator_1.body)("numbersOfProductAvailable", "number of product must be a positive number")
         .optional()
         .isNumeric()
         .custom((value) => {
-        if (typeof +value === "number" && +value >= 0)
+        if (typeof +value === "number" && +value < 0)
             return false;
         return true;
     }),

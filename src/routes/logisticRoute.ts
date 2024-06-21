@@ -13,23 +13,31 @@ const {
 
 const router = Router();
 
-router
-  .route("/driver/current/location/:orderId")
-  .post(
-    [
-      query("latitude")
-        .isFloat({ min: -90, max: 90 })
-        .withMessage("invalid cordinate"),
-      query("longitude")
-        .isFloat({ min: -180, max: 180 })
-        .withMessage("invalid cordinate"),
-    ],
-    Auth,
-    shearDriverLocation
-  );
+router.route("/driver/current/location/:orderId").post(
+  [
+    query("latitude")
+      .isFloat({ min: -90, max: 90 })
+      .withMessage("invalid cordinate")
+      .custom((val) => {
+        if (val.length != 9) return false;
+
+        return true;
+      }),
+    query("longitude")
+      .isFloat({ min: -180, max: 180 })
+      .withMessage("invalid cordinate")
+      .custom((val) => {
+        if (val.length != 8) return false;
+
+        return true;
+      }),
+  ],
+  Auth,
+  shearDriverLocation
+);
 
 router
-  .route("/admin/assign-delivery/:orderId")
+  .route("/admin/assign-delivery/:driverId")
   .post(Auth, assignDeliveryToDriver);
 
 // router.route("/:driverId").post(Auth, postNonProcessOrders);

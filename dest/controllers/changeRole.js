@@ -30,22 +30,12 @@ class ChangeRole {
                     return res.status(422).json(err);
                 }
                 const [count, updatedValue] = yield userModel_1.default.update({ role: req.query.role }, { where: { email: req.query.email }, returning: true, transaction });
-                // await UserModel.update(
-                //   { role },
-                //   {
-                //     where: {
-                //       email,
-                //     },
-                //     returning: true,
-                //     transaction,
-                //   }
-                // );
                 transaction.commit();
                 res.status(200).json({
                     message: "update successfull",
                     status: "update",
                     statusCode: 201,
-                    data: updatedValue,
+                    data: [],
                 });
             }
             catch (error) {

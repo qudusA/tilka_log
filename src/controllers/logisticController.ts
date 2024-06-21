@@ -12,7 +12,7 @@ import Delivery from "../models/delivery";
 
 export default class LogisticController {
   static async assignDeliveryToDriver(
-    req: Request<{ driverId: string }, {}, { orderIds: string[] }>,
+    req: Request<{ driverId: string }, {}, {}, { orderIds: string[] }>,
     res: Response<Ok | ErrorResponse>,
     next: NextFunction
   ) {
@@ -23,32 +23,40 @@ export default class LogisticController {
       });
       if (!foundAdmin) {
         transaction.rollback();
-        const error = new ErrorResponse("user not found", "not found", 404, {});
-        return res.status(404).json(error);
-      }
-      const { orderIds } = req.body;
-      const { driverId } = req.params;
-      const foundDriver = await userModel.findByPk(driverId);
-      if (!foundDriver) {
-        transaction.rollback();
         const error = new ErrorResponse(
-          "user not found",
-          "not found ",
+          "admin not found",
+          "not found",
           404,
-          {}
+          "admin not found"
         );
         return res.status(404).json(error);
       }
-      if (foundDriver.role !== "courier") {
+      const { orderIds } = req.query;
+      const { driverId } = req.params;
+      console.log("driver id", driverId);
+      const foundDriver = (await userModel.findByPk(driverId)) as userModel;
+      console.log(foundDriver);
+      if (!foundDriver) {
+        transaction.rollback();
+        const error = new ErrorResponse(
+          "driver not found",
+          "not found ",
+          404,
+          "driver not found"
+        );
+        return res.status(404).json(error);
+      }
+      if (foundDriver.dataValues.role !== "courier") {
         transaction.rollback();
         const err = new ErrorResponse(
           "you can't assign this user",
           "401",
           401,
-          {}
+          "you can't assign this user"
         );
         return res.status(401).json(err);
       }
+      console.log("order id", typeof orderIds, orderIds);
 
       const nonProccessOrders = await Order.findAll({
         where: {
@@ -56,6 +64,7 @@ export default class LogisticController {
           orderStatus: { [Op.in]: ["On Hold", "Processing"] },
         },
       });
+      console.log("nonProcess", nonProccessOrders);
 
       if (nonProccessOrders.length < 1) {
         transaction.rollback();
@@ -63,12 +72,32 @@ export default class LogisticController {
           "order not found",
           "not found",
           404,
-          {}
+          "order not found"
         );
+        transaction.rollback();
         return res.status(404).json(error);
       }
 
-      const deliveries = await foundDriver.ctreateDeliverys(nonProccessOrders);
+      // const deliveries = await foundDriver.createDelivery(nonProccessOrders, {
+      //   transaction,
+      // });
+
+      const deliveries = await Promise.all(
+        nonProccessOrders.map(async (order) => {
+          const delivery = await Delivery.create(
+            {
+              orderId: order.id,
+              driverId: foundDriver.id, // Assuming foundDriver is an instance of userModel
+              // other attributes of Delivery if any
+            },
+            { transaction }
+          );
+
+          return delivery;
+        })
+      );
+
+      console.log("delivery", deliveries);
 
       await Order.update(
         { orderStatus: "Out for Delivery" },
@@ -87,7 +116,7 @@ export default class LogisticController {
         statusCode: 201,
         data: deliveries,
       });
-    } catch (error) {
+    } catch (error: any) {
       transaction.rollback();
       next(error);
     }
@@ -155,20 +184,28 @@ export default class LogisticController {
       const latit = latitude || lat;
       const long = longitude || lon;
 
-      const foundOrder: Order | null = await Order.findByPk(orderId);
-      if (!foundOrder) {
-        const err = new ErrorResponse("no order found...", "404", 404, {});
-        return res.status(404).json(err);
+      const foundDelivery = await Delivery.findOne({ where: { orderId } });
+      if (!foundDelivery) {
+        const foundOrder: Order | null = await Order.findByPk(orderId);
+        if (!foundOrder) {
+          const err = new ErrorResponse("no order found...", "404", 404, {});
+          return res.status(404).json(err);
+        }
+
+        await foundOrder.createDelivery(
+          {
+            driverId: +req.userId,
+            latitude: latit,
+            longitude: long,
+          },
+          { transaction }
+        );
+      } else {
+        foundDelivery.longitude = long;
+        foundDelivery.latitude = latit;
+        await foundDelivery.save();
       }
 
-      await foundOrder.createDelivery(
-        {
-          driverId: +req.userId,
-          latitude: latit,
-          longitude: long,
-        },
-        { transaction }
-      );
       transaction.commit();
       res.status(201).json({
         message: "success",
@@ -260,18 +297,25 @@ export default class LogisticController {
   ) {
     try {
       type order = {
-        "orders.userId": number;
-        "orders.oderStatus": string;
+        "order.id": number;
+        "order.userId": number;
+        "order.deliveryAddress": number;
+        "order.orderDate": Date;
+        "order.orderStatus": string;
+        "order.totalAmount": number;
+        "order.createdAt": Date;
+        "order.updatedAt": Date;
       };
 
       type combinedType = OrderType & order;
       const { orderId } = req.params;
       const foundDelivery: any = await Delivery.findOne({
         where: { orderId },
+        raw: true,
         include: [
           {
             model: Order,
-            as: "orders",
+            as: "order",
           },
         ],
       });
@@ -285,8 +329,8 @@ export default class LogisticController {
       }
 
       if (
-        foundDelivery["orders.userId"] !== req.userId &&
-        foundDelivery["orders.oderStatus"] !== "out for delivery"
+        foundDelivery["order.userId"] !== req.userId &&
+        foundDelivery["order.oderStatus"] !== "Out for Delivery"
       ) {
         return res.status(404).json({
           message: "no order to track",

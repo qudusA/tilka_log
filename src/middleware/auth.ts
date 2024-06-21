@@ -21,7 +21,7 @@ const Auth: RequestHandler = (
     if (!authHeader) {
       const error = new ErrorResponse(
         "unAuthorized request",
-        "unAuthorized",
+        "unAuthorized not logged in",
         401,
         {}
       );
@@ -32,7 +32,7 @@ const Auth: RequestHandler = (
     if (!jwt) {
       const error = new ErrorResponse(
         "unAuthorized request",
-        "unAuthorized",
+        " unAuthorized not logged in",
         401,
         {}
       );

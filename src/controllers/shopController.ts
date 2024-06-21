@@ -55,15 +55,23 @@ export default class ShopController {
     next: NextFunction
   ) {
     try {
-      const allProduct = await ProductModel.findOne({
+      const foundProduct = await ProductModel.findOne({
         where: { id: req.params.productId },
         raw: true,
       });
+      if (!foundProduct) {
+        res.status(404).json({
+          message: "product not found",
+          status: "error",
+          statusCode: 404,
+          data: {},
+        });
+      }
       res.status(200).json({
         message: "successful",
         status: "success",
         statusCode: 200,
-        data: { ...allProduct },
+        data: { ...foundProduct },
       });
     } catch (error) {
       next(error);
@@ -84,12 +92,7 @@ export default class ShopController {
       const product = await ProductModel.findByPk(req.params.productId);
 
       if (!product) {
-        const err = new ErrorResponse(
-          "kindly put product image",
-          "401",
-          404,
-          {}
-        );
+        const err = new ErrorResponse("", "404", 404, "product not found");
         return res.status(404).json(err);
       }
 
@@ -140,8 +143,17 @@ export default class ShopController {
         return res.status(404).json(err);
       }
 
-      if (cartItem.quantity > 1) {
-        cartItem.quantity -= 1;
+      const { qty } = req.query;
+      let val: number;
+      if (!qty) {
+        val = 1;
+      } else {
+        val = +qty;
+      }
+
+      cartItem.quantity += -val;
+
+      if (cartItem.quantity >= 1) {
         await cartItem.save();
 
         transaction.commit();
@@ -168,7 +180,7 @@ export default class ShopController {
   }
 
   static async increaseProductQuantyInCart(
-    req: Request<{ cartId: string }>,
+    req: Request<{ cartId: string }, {}, {}, { qty: string }>,
     res: Response<Ok | ErrorResponse>,
     next: NextFunction
   ) {
@@ -183,12 +195,20 @@ export default class ShopController {
         return res.status(404).json(err);
       }
 
-      cartItem.quantity += 1;
+      const { qty } = req.query;
+      let val: number;
+      if (!qty) {
+        val = 1;
+      } else {
+        val = +qty;
+      }
+
+      cartItem.quantity += val;
       await cartItem.save();
 
       transaction.commit();
       return res.status(201).json({
-        message: "Product quantity decreased by 1",
+        message: "Product quantity increase",
         status: "updated",
         statusCode: 201,
         data: cartItem,
@@ -212,7 +232,7 @@ export default class ShopController {
       });
 
       if (!cartItem) {
-        const err = new ErrorResponse("Cart item not found", "401", 404, {});
+        const err = new ErrorResponse("Cart item not found", "404", 404, {});
         return res.status(404).json(err);
       }
 
@@ -251,9 +271,13 @@ export default class ShopController {
       });
 
       if (cartItems.length < 1) {
-        console.log("User cart not found");
-        const err = new ErrorResponse("no item in cart...", "404", 404, {});
-        return res.status(404).json(err);
+        // const err = new ErrorResponse(, "404", 404, {});
+        return res.status(404).json({
+          message: "no item in cart...",
+          status: "404",
+          statusCode: 404,
+          data: {},
+        });
       }
 
       type val = {
@@ -599,21 +623,27 @@ export default class ShopController {
       const createdOrderItems = await OrderItem.bulkCreate(cartArr, {
         transaction,
       });
-
-      userCart.forEach(async (currentObj: combinedType) => {
+      console.log(createdOrderItems, "create");
+      for (const currentObj of userCart) {
         await ProductModel.update(
           {
             numbersOfProductAvailable: sequelize.literal(
-              `numbersOfProductAvailable - ${currentObj.quantity}`
+              `"numbersOfProductAvailable" - ${currentObj.quantity}`
             ),
           },
-          { where: { id: currentObj.productId }, transaction }
+          {
+            where: { id: currentObj.productId },
+            transaction,
+          }
         );
-      });
+      }
+
+      console.log("after for each");
 
       await CartItems.destroy({ where: { cartId }, transaction });
 
-      console.log(JSON.stringify(payment));
+      console.log("after destroy");
+
       await transaction.commit();
       res.status(201).json({
         message: "successful",
