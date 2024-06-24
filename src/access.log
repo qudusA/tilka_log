@@ -468,3 +468,7 @@ combine
 ::1 - - [23/Jun/2024:23:55:34 +0000] "GET /order/success/1?total=264&paymentId=PAYID-MZ4LL2Q4Y262187DB2934545&token=EC-1BX25892G6726792U&PayerID=Y74TDBLP8B2K8 HTTP/1.1" 404 45 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 ::1 - - [23/Jun/2024:23:55:53 +0000] "POST /order/success/1?total=264&paymentId=PAYID-MZ4LL2Q4Y262187DB2934545&token=EC-1BX25892G6726792U&PayerID=Y74TDBLP8B2K8 HTTP/1.1" 201 232 "-" "PostmanRuntime/7.39.0"
 ::1 - - [24/Jun/2024:00:57:36 +0000] "POST /signup HTTP/1.1" 201 457 "-" "PostmanRuntime/7.39.0"
+::1 - - [24/Jun/2024:01:04:49 +0000] "POST /signup HTTP/1.1" 201 457 "-" "PostmanRuntime/7.39.0"
+::1 - - [24/Jun/2024:01:05:00 +0000] "POST /signup HTTP/1.1" 201 457 "-" "PostmanRuntime/7.39.0"
+::1 - - [24/Jun/2024:01:05:26 +0000] "GET /signup/verify?id=4&token=eb20ea32-61b5-41dc-b531-10b2e8e3850a HTTP/1.1" 404 45 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+::1 - - [24/Jun/2024:01:08:57 +0000] "POST /signup HTTP/1.1" 422 159 "-" "PostmanRuntime/7.39.0"

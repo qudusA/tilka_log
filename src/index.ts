@@ -45,11 +45,8 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// const io = new Server(httpServer, {
-//   cors: {
-//     origin: "http://127.0.0.1:5500",
-//   },
-// });
+
+app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
   res.setHeader("ACCESS-CONTROL-ALLOW-ORIGIN", "*");
@@ -58,7 +55,6 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Credentials", "true");
   next();
 });
-// app.use(express.static("public"));
 
 const log = fs.createWriteStream(path.join(__dirname, "access.log"), {
   flags: "a",
@@ -67,16 +63,6 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(compression());
 app.use(helmet());
-
-// app.use(
-//   helmet.contentSecurityPolicy({
-//     directives: {
-//       defaultSrc: ["'self'"],
-//       scriptSrc: ["'self'", "https://cdn.socket.io"],
-//       // add other CSP directives as needed
-//     },
-//   })
-// );
 
 app.use(morgan("combined", { stream: log }));
 
@@ -143,7 +129,6 @@ wss.on("connection", (socket) => {
   socket.send("hello my people this is the server...");
 });
 
-// io.on("connection", (socket) => {
 //   console.log("A user connected with id:", socket.id);
 
 // socket.on("register", async (userId: string, role: "buyer" | "driver") => {

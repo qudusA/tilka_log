@@ -17,6 +17,7 @@ import OrderItem, { OrderItemAttribute } from "../models/orderItems";
 import { validationResult } from "express-validator";
 
 export default class ShopController {
+  private static BASE_URL = process.env.BASE_URL || "http://localhost:3000";
   constructor() {}
 
   static async getShop(
@@ -301,7 +302,7 @@ export default class ShopController {
       if (cartItems.length === 0) {
         // const err = new ErrorResponse("no item in cart...", "404", 404, {});
         // return res.status(404).json(err);
-        res.status(200).json({
+        return res.status(200).json({
           message: "no item in cart...",
           status: "success",
           statusCode: 200,
@@ -330,7 +331,7 @@ export default class ShopController {
       const address: Address[] = await Address.findAll({ where: { userId } });
       if (address.length < 1) {
         console.log("length is zero");
-        const url = `${req.protocol}://${req.headers.host}/add-address`;
+        const url = `${ShopController.BASE_URL}/add-address`;
         return res.status(301).json({
           message: "redirect msg",
           status: "redirect",
@@ -538,7 +539,6 @@ export default class ShopController {
       });
 
       if (!userCart) {
-        console.log("User cart not found");
         const err = new ErrorResponse("no item in cart...", "404", 404, {});
         return res.status(404).json(err);
       }
@@ -576,8 +576,8 @@ export default class ShopController {
           payment_method: "paypal",
         },
         redirect_urls: {
-          return_url: `${req.protocol}://${req.headers.host}/order/success/${id}?total=${totalValue}`,
-          cancel_url: `${req.protocol}://${req.headers.host}/order/cancel`,
+          return_url: `${ShopController}/order/success/${id}?total=${totalValue}`,
+          cancel_url: `${ShopController}/order/cancel`,
         },
         transactions: [
           {
@@ -676,9 +676,6 @@ export default class ShopController {
         raw: true,
       });
 
-      console.log("total cart", userCart);
-      // console.log(userCart);
-
       const foundUser = await User.findOne({ where: { id: userId } });
 
       if (!foundUser) {
@@ -699,7 +696,6 @@ export default class ShopController {
         },
         { transaction }
       );
-      console.log("createdOrder", createdOrder);
 
       const cartArr = userCart.map((currentObj: combinedType) => {
         return {
@@ -730,11 +726,7 @@ export default class ShopController {
         );
       }
 
-      console.log("after for each");
-
       await CartItems.destroy({ where: { cartId }, transaction });
-
-      console.log("after destroy");
 
       await transaction.commit();
       res.status(201).json({

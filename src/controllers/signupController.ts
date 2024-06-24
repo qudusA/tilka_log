@@ -18,6 +18,7 @@ import { Ok } from "../response/ok/okResponse";
 import { ErrorResponse } from "../response/error/ErrorResponse";
 
 export class SignUpController {
+  private static BASE_URL = process.env.BASE_URL || "http://localhost:3000";
   constructor() {}
 
   async postSignUp(
@@ -96,7 +97,7 @@ export class SignUpController {
 
       const token = uuidv4();
 
-      const redirect = `${req.protocol}://${req.headers.host}${req.url}/verify?id=${rest.id}&token=${token}`;
+      const redirect = `${SignUpController.BASE_URL}${req.url}/verify?id=${rest.id}&token=${token}`;
 
       const generateToken = new GenerateToken(token, user);
       await generateToken.saveToken(transaction);
@@ -299,7 +300,7 @@ export class SignUpController {
       };
       await transport.sendMail(options);
 
-      const redirect = `${req.protocol}://${req.headers.host}${req.url}/reset-password/${foundUser.id}`;
+      const redirect = `${SignUpController.BASE_URL}${req.url}/reset-password/${foundUser.id}`;
       await transaction.commit();
 
       res.status(201).json({
