@@ -30,5 +30,5 @@ Token.init({
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
     },
-}, { sequelize: sequelize_2.default, modelName: "token" });
+}, { sequelize: sequelize_2.default, modelName: "token", tableName: "token_tbl" });
 exports.default = Token;

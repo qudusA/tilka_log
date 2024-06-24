@@ -50,6 +50,7 @@ Address.init({
 }, {
     sequelize: sequelize_3.default,
     modelName: "address",
+    tableName: "address_tbl",
     indexes: [
         {
             unique: true,

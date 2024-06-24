@@ -9,15 +9,33 @@ import userModel from "../models/userModel";
 import { Ok } from "../response/ok/okResponse";
 import { Op } from "sequelize";
 import Delivery from "../models/delivery";
+import Package, { PackageAttribute } from "../models/package";
+import Address from "../models/addressModel";
 
 export default class LogisticController {
   static async assignDeliveryToDriver(
-    req: Request<{ driverId: string }, {}, {}, { orderIds: string[] }>,
+    req: Request<
+      { driverId: string },
+      {},
+      {},
+      { orderIds?: string[]; packageIds?: string[] }
+    >,
     res: Response<Ok | ErrorResponse>,
     next: NextFunction
   ) {
     const transaction = await sequelize.transaction();
     try {
+      const { orderIds, packageIds } = req.query;
+      const { driverId } = req.params;
+      if ((!orderIds && !packageIds) || (orderIds && packageIds)) {
+        return res.status(400).json({
+          message:
+            "You must provide either orderIds or packageIds, but not both.",
+          status: "error",
+          statusCode: 400,
+          data: {},
+        });
+      }
       const foundAdmin = await userModel.findOne({
         where: { id: req.userId, role: "admin" },
       });
@@ -31,11 +49,9 @@ export default class LogisticController {
         );
         return res.status(404).json(error);
       }
-      const { orderIds } = req.query;
-      const { driverId } = req.params;
-      console.log("driver id", driverId);
+
       const foundDriver = (await userModel.findByPk(driverId)) as userModel;
-      console.log(foundDriver);
+      console.log("found driver", foundDriver);
       if (!foundDriver) {
         transaction.rollback();
         const error = new ErrorResponse(
@@ -56,78 +72,123 @@ export default class LogisticController {
         );
         return res.status(401).json(err);
       }
-      console.log("order id", typeof orderIds, orderIds);
 
-      const nonProccessOrders = await Order.findAll({
-        where: {
-          id: { [Op.in]: orderIds },
-          orderStatus: { [Op.in]: ["On Hold", "Processing"] },
-        },
-      });
-      console.log("nonProcess", nonProccessOrders);
+      // let nonProccessOrders = undefined;
+      let deliveries: any, count: number;
 
-      if (nonProccessOrders.length < 1) {
-        transaction.rollback();
-        const error = new ErrorResponse(
-          "order not found",
-          "not found",
-          404,
-          "order not found"
-        );
-        transaction.rollback();
-        return res.status(404).json(error);
-      }
-
-      // const deliveries = await foundDriver.createDelivery(nonProccessOrders, {
-      //   transaction,
-      // });
-
-      const deliveries = await Promise.all(
-        nonProccessOrders.map(async (order) => {
-          const delivery = await Delivery.create(
-            {
-              orderId: order.id,
-              driverId: foundDriver.id, // Assuming foundDriver is an instance of userModel
-              // other attributes of Delivery if any
-            },
-            { transaction }
-          );
-
-          return delivery;
-        })
-      );
-
-      console.log("delivery", deliveries);
-
-      await Order.update(
-        { orderStatus: "Out for Delivery" },
-        {
+      if (orderIds) {
+        console.log("not undefine");
+        const nonProccessOrders = await Order.findAll({
           where: {
-            id: nonProccessOrders.map((order) => order.id),
+            id: { [Op.in]: orderIds },
+            orderStatus: { [Op.in]: ["On Hold", "Processing"] },
           },
-          transaction,
+        });
+
+        if (nonProccessOrders.length < 1) {
+          transaction.rollback();
+          const error = new ErrorResponse(
+            "order not found",
+            "not found",
+            404,
+            "order not found"
+          );
+          transaction.rollback();
+          return res.status(404).json(error);
         }
-      );
+
+        deliveries = await Promise.all(
+          nonProccessOrders.map(async (order) => {
+            const delivery = await Delivery.create(
+              {
+                orderId: order.id,
+                driverId: foundDriver.id,
+              },
+              { transaction }
+            );
+
+            return delivery;
+          })
+        );
+
+        [count] = await Order.update(
+          { orderStatus: "Out for Delivery" },
+          {
+            where: {
+              id: nonProccessOrders.map((order) => order.id),
+            },
+            transaction,
+          }
+        );
+      } else {
+        console.log("else block");
+        const nonProccessPackage = await Package.findAll({
+          where: {
+            id: { [Op.in]: packageIds },
+            status: { [Op.in]: ["On Hold", "Processing"] },
+          },
+        });
+
+        if (nonProccessPackage.length < 1) {
+          await transaction.rollback();
+          const error = new ErrorResponse(
+            "no items to process",
+            "not found",
+            404,
+            "no package to process"
+          );
+          return res.status(404).json(error);
+        }
+
+        deliveries = await Promise.all(
+          nonProccessPackage.map(async (pack) => {
+            const delivery = await Delivery.create(
+              {
+                packageId: pack.id,
+                driverId: foundDriver.id,
+              },
+              { transaction }
+            );
+
+            return delivery;
+          })
+        );
+
+        [count] = await Package.update(
+          { status: "Driver Assiged" },
+          {
+            where: {
+              id: nonProccessPackage.map((pack) => pack.id),
+            },
+            transaction,
+          }
+        );
+      }
 
       transaction.commit();
       res.status(201).json({
-        message: "all data creation successful",
+        message: `${count} data creation successful`,
         status: "created",
         statusCode: 201,
         data: deliveries,
       });
     } catch (error: any) {
-      transaction.rollback();
+      await transaction.rollback();
       next(error);
     }
   }
 
   static async shearDriverLocation(
     req: Request<
-      { orderId: string },
       {},
       {},
-      { latitude: string; longitude: string }
+      {},
+      {
+        latitude: string;
+        longitude: string;
+        orderId?: string;
+        packageId?: string;
+      }
     >,
     res: Response<Ok | ErrorResponse>,
     next: NextFunction
@@ -143,10 +204,19 @@ export default class LogisticController {
       return res.status(422).json(error);
     }
 
-    const { orderId } = req.params;
+    // const { orderId } = req.params;
 
     const transaction = await sequelize.transaction();
     try {
+      const { latitude, longitude, orderId, packageId } = req.query;
+      if ((packageId && orderId) || (!packageId && !orderId)) {
+        return res.status(400).json({
+          message: "wrong input id",
+          status: "error",
+          statusCode: 404,
+          data: {},
+        });
+      }
       const foundDriver = await userModel.findByPk(req.userId);
       if (!foundDriver) {
         transaction.rollback();
@@ -180,27 +250,35 @@ export default class LogisticController {
         return res.status(500).json(err);
       }
       const { lat, lon } = locationresponse.data;
-      const { latitude, longitude } = req.query;
+
       const latit = latitude || lat;
       const long = longitude || lon;
-
-      const foundDelivery = await Delivery.findOne({ where: { orderId } });
-      if (!foundDelivery) {
-        const foundOrder: Order | null = await Order.findByPk(orderId);
-        if (!foundOrder) {
-          const err = new ErrorResponse("no order found...", "404", 404, {});
-          return res.status(404).json(err);
+      let foundDelivery = undefined;
+      if (orderId) {
+        foundDelivery = await Delivery.findOne({ where: { orderId } });
+        if (!foundDelivery) {
+          transaction.rollback();
+          return res.status(400).json({
+            message: "wrong order id",
+            status: "error",
+            statusCode: 404,
+            data: {},
+          });
         }
-
-        await foundOrder.createDelivery(
-          {
-            driverId: +req.userId,
-            latitude: latit,
-            longitude: long,
-          },
-          { transaction }
-        );
+        foundDelivery.longitude = long;
+        foundDelivery.latitude = latit;
+        await foundDelivery.save();
       } else {
+        foundDelivery = await Delivery.findOne({ where: { packageId } });
+        if (!foundDelivery) {
+          transaction.rollback();
+          return res.status(400).json({
+            message: "wrong pack id",
+            status: "error",
+            statusCode: 404,
+            data: {},
+          });
+        }
         foundDelivery.longitude = long;
         foundDelivery.latitude = latit;
         await foundDelivery.save();
@@ -348,6 +426,332 @@ export default class LogisticController {
         data: { lat: latitude, lon: longitude },
       });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  static async sendPackage(
+    req: Request<
+      {},
+      {},
+      {
+        packageName: string;
+        weight: string;
+        receiverCity: string;
+        receiverCountry: string;
+        receiverState: string;
+        receiverStreet: string;
+        receiverZip: string;
+        receiverHouseNumber: string;
+        senderCity: string;
+        senderCountry: string;
+        senderState: string;
+        senderStreet: string;
+        senderZip: string;
+        senderHouseNumber: string;
+      },
+      { receiverEmail: string }
+    >,
+    res: Response,
+    next: NextFunction
+  ) {
+    const transaction = await sequelize.transaction();
+    try {
+      const {
+        packageName,
+        weight,
+        receiverCity,
+        receiverCountry,
+        receiverState,
+        receiverStreet,
+        receiverZip,
+        receiverHouseNumber,
+        senderCity,
+        senderCountry,
+        senderState,
+        senderStreet,
+        senderZip,
+        senderHouseNumber,
+      } = req.body;
+
+      const { userId } = req;
+      const { receiverEmail } = req.query;
+
+      const foundUser = await userModel.findAll({
+        where: { [Op.or]: { id: userId, email: receiverEmail } },
+        raw: true,
+      });
+
+      if (foundUser.length < 2) {
+        return res.status(404).json("wrong");
+      }
+      const [user1, user2] = foundUser;
+      let sender = undefined;
+      let receiver = undefined;
+      if (user1.id === +userId) {
+        sender = user1;
+        receiver = user2;
+      } else {
+        sender = user2;
+        receiver = user1;
+      }
+
+      const func = async function (
+        city: string,
+        country: string,
+        state: string,
+        street: string,
+        zip: string,
+        houseNumber: string,
+        user: userModel
+      ) {
+        let foundUserAddress = undefined;
+        foundUserAddress = await Address.findOne({
+          where: {
+            city,
+            street,
+            houseNumber,
+            userId: user.id,
+          },
+        });
+
+        if (!foundUserAddress) {
+          const curretAddress = await Address.update(
+            { deliveredTo: false },
+            { where: { userId: user.id, deliveredTo: true }, transaction }
+          );
+
+          foundUserAddress = await Address.create(
+            {
+              userId: user.id,
+              city,
+              country,
+              houseNumber,
+              state,
+              street,
+              zip,
+            },
+            { transaction }
+          );
+        } else {
+          const curretAddress = await Address.update(
+            { deliveredTo: false },
+            { where: { userId, deliveredTo: true }, transaction }
+          );
+
+          foundUserAddress.deliveredTo = true;
+          await foundUserAddress.save();
+        }
+        return foundUserAddress;
+      };
+
+      await func(
+        receiverCity,
+        receiverCountry,
+        receiverState,
+        receiverStreet,
+        receiverZip,
+        receiverHouseNumber,
+        receiver
+      );
+      await func(
+        senderCity,
+        senderCountry,
+        senderState,
+        senderStreet,
+        senderZip,
+        senderHouseNumber,
+        sender
+      );
+
+      const createdPackage = await Package.create({
+        packageName,
+        receiverId: receiver.id,
+        senderId: sender.id,
+      });
+
+      transaction.commit();
+      res.status(200).json({
+        message: "success",
+        status: "success",
+        statusCode: 200,
+        data: createdPackage,
+      });
+    } catch (error) {
+      await transaction.rollback();
+      next(error);
+    }
+  }
+
+  static async getAllPackages(req: Request, res: Response, next: NextFunction) {
+    try {
+      const allPackage = await Package.findAll({
+        where: { status: "Processing" },
+      });
+      if (allPackage.length < 1) {
+        return res.json(200).json({
+          message: "package not found",
+          status: "not found",
+          statusCode: 200,
+          data: allPackage,
+        });
+      }
+      res.status(200).json({
+        message: "package fetched",
+        status: "fetch",
+        statusCode: 200,
+        data: allPackage,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getAllAssingedDelivery(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const { userId } = req;
+      const foundUser = await userModel.findByPk(userId);
+      if (!foundUser) {
+        return res.json({
+          message: "not found",
+          status: "not found",
+          statusCode: 404,
+          data: "not found",
+        });
+      }
+
+      if (foundUser.role !== "courier") {
+        return res.json({
+          message: "you dont have clearance for this task",
+          status: "unAuthorized",
+          statusCode: 401,
+          data: "you dont have clearance for this task",
+        });
+      }
+      const foundDelivery = await Delivery.findAll({
+        where: { driverId: foundUser.id },
+        include: [{ model: Package, as: "package" }],
+      });
+      if (foundDelivery.length < 1) {
+        return res.json({
+          message: "not found",
+          status: "not found",
+          statusCode: 404,
+          data: foundDelivery,
+        });
+      }
+
+      res.status(200).json({
+        message: "delivery fetched",
+        status: "success",
+        statusCode: 200,
+        data: foundDelivery,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async getPackageToEdit(
+    req: Request<{ packageId: string }, {}, {}, { edit: string }>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const { edit } = req.query;
+      const { packageId } = req.params;
+      const { userId } = req;
+      const foundUser = await userModel.findByPk(userId);
+      if (!foundUser) {
+        return res.json({
+          message: "not found",
+          status: "not found",
+          statusCode: 404,
+          data: "not found",
+        });
+      }
+
+      if (foundUser.role !== "courier") {
+        return res.json({
+          message: "you dont have clearance for this task",
+          status: "unAuthorized",
+          statusCode: 401,
+          data: "you dont have clearance for this task",
+        });
+      }
+      const foundPackage = await Package.findByPk(packageId);
+      if (!foundPackage) {
+        return res.status(400).json({});
+      }
+      if (foundPackage.updateCount >= 2) {
+        return res.status(401).json({
+          message: "this item has been previously updated by you",
+          status: "unAuthorized",
+          statusCode: 401,
+          data: {},
+        });
+      }
+      res.status(200).json({
+        message: "product fetched",
+        status: "success",
+        statusCode: 200,
+        data: foundPackage,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateWeight(
+    req: Request<
+      { packageId: string },
+      {},
+      { weight: string },
+      { edit: string }
+    >,
+    res: Response,
+    next: NextFunction
+  ) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { edit } = req.query;
+      const { packageId } = req.params;
+      const { weight } = req.body;
+      const { userId } = req;
+      const foundUser = await userModel.findByPk(userId);
+      if (!foundUser) {
+        return res.json({
+          message: "not found",
+          status: "not found",
+          statusCode: 404,
+          data: "not found",
+        });
+      }
+
+      if (foundUser.role !== "courier") {
+        return res.json({
+          message: "you dont have clearance for this task",
+          status: "unAuthorized",
+          statusCode: 401,
+          data: "you dont have clearance for this task",
+        });
+      }
+      const update = await Package.update(
+        { weight },
+        { where: { id: packageId }, transaction, individualHooks: true }
+      );
+      transaction.commit();
+      res.status(201).json({
+        message: "update successful",
+        status: "update",
+        statusCode: 201,
+        data: {},
+      });
+    } catch (error) {
+      transaction.rollback();
       next(error);
     }
   }

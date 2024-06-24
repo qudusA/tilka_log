@@ -76,7 +76,7 @@ Order.init(
         "In Transit",
         "On Hold",
         "Available for Pickup",
-        "Deliverd"
+        "Delivered"
       ),
       allowNull: false,
       defaultValue: "Processing",
@@ -89,7 +89,7 @@ Order.init(
               "In Transit",
               "On Hold",
               "Available for Pickup",
-              "Deliverd",
+              "Delivered",
             ],
           ],
           msg: "input not valid...",
@@ -104,5 +104,6 @@ Order.init(
   {
     modelName: "order",
     sequelize,
+    tableName: "order_tbl",
   }
 );

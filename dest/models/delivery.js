@@ -16,7 +16,11 @@ Delivery.init({
     },
     orderId: {
         type: sequelize_1.DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
+    },
+    packageId: {
+        type: sequelize_1.DataTypes.INTEGER,
+        allowNull: true,
     },
     driverId: {
         type: sequelize_1.DataTypes.INTEGER,
@@ -31,5 +35,6 @@ Delivery.init({
 }, {
     sequelize: sequelize_2.default,
     modelName: "Delivery",
+    tableName: "delivery_tbl",
 });
 exports.default = Delivery;

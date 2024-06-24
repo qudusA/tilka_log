@@ -52,7 +52,7 @@ Order.init({
         defaultValue: new Date(Date.now()),
     },
     orderStatus: {
-        type: DataTypes.ENUM("Processing", "Out for Delivery", "In Transit", "On Hold", "Available for Pickup", "Deliverd"),
+        type: DataTypes.ENUM("Processing", "Out for Delivery", "In Transit", "On Hold", "Available for Pickup", "Delivered"),
         allowNull: false,
         defaultValue: "Processing",
         validate: {
@@ -64,7 +64,7 @@ Order.init({
                         "In Transit",
                         "On Hold",
                         "Available for Pickup",
-                        "Deliverd",
+                        "Delivered",
                     ],
                 ],
                 msg: "input not valid...",
@@ -78,4 +78,5 @@ Order.init({
 }, {
     modelName: "order",
     sequelize: sequelize_2.default,
+    tableName: "order_tbl",
 });

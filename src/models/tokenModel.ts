@@ -55,7 +55,7 @@ Token.init(
       allowNull: false,
     },
   },
-  { sequelize, modelName: "token" }
+  { sequelize, modelName: "token", tableName: "token_tbl" }
 );
 
 export default Token;

@@ -98,31 +98,31 @@ export class SignUpController {
 
       const redirect = `${req.protocol}://${req.headers.host}${req.url}/verify?id=${rest.id}&token=${token}`;
 
-      const generateToken = new GenerateToken(token, user);
-      await generateToken.saveToken(transaction);
+      // const generateToken = new GenerateToken(token, user);
+      // await generateToken.saveToken(transaction);
 
-      const transport = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.GMAIL_EMAIL,
-          pass: process.env.GMAIL_PASSWORD,
-        },
-      });
+      // const transport = nodemailer.createTransport({
+      //   service: "gmail",
+      //   auth: {
+      //     user: process.env.GMAIL_EMAIL,
+      //     pass: process.env.GMAIL_PASSWORD,
+      //   },
+      // });
 
-      const options = {
-        from: process.env.GMAIL_EMAIL,
-        to: rest.email,
-        subject: "ACCOUNT VERIFICATION",
-        text: `             NOTIFICATION OF EMAIL VERIFICATION
-        kindly click on the following link 
-        ${redirect} 
-        to verify your account with us.
-        please note that this is a one time token and it expires in 10min.
+      // const options = {
+      //   from: process.env.GMAIL_EMAIL,
+      //   to: rest.email,
+      //   subject: "ACCOUNT VERIFICATION",
+      //   text: `             NOTIFICATION OF EMAIL VERIFICATION
+      //   kindly click on the following link
+      //   ${redirect}
+      //   to verify your account with us.
+      //   please note that this is a one time token and it expires in 10min.
 
-        kindly ignore the mail if you do not signup on our website..
-        `,
-      };
-      await transport.sendMail(options);
+      //   kindly ignore the mail if you do not signup on our website..
+      //   `,
+      // };
+      // await transport.sendMail(options);
 
       await transaction.commit();
 

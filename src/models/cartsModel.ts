@@ -38,7 +38,7 @@ Carts.init(
       allowNull: false,
     },
   },
-  { sequelize, modelName: "cart", timestamps: false }
+  { sequelize, modelName: "cart", tableName: "cart_tbl" }
 );
 
 export default Carts;

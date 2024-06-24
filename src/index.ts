@@ -39,6 +39,7 @@ import OrderItem, { OrderItemAttribute } from "./models/orderItems";
 import CommandLineRunner from "./utils/commandLindRunner";
 import Delivery from "./models/delivery";
 import Auth from "./middleware/auth";
+import Package from "./models/package";
 
 const app = express();
 const server = http.createServer(app);
@@ -286,8 +287,33 @@ OrderItem.belongsTo(productModel, {
 userModel.hasMany(Delivery, { foreignKey: "driverId" });
 Delivery.belongsTo(userModel, { foreignKey: "driverId" });
 
-Order.hasOne(Delivery, { foreignKey: "orderId" });
-Delivery.belongsTo(Order, { foreignKey: "orderId" });
+Order.hasOne(Delivery, { foreignKey: "orderId", onDelete: "CASCADE" });
+Delivery.belongsTo(Order, { foreignKey: "orderId", onDelete: "CASCADE" });
+
+Package.hasOne(Delivery, { foreignKey: "packageId", onDelete: "CASCADE" });
+Delivery.belongsTo(Package, { foreignKey: "packageId", onDelete: "CASCADE" });
+
+Package.belongsTo(userModel, {
+  as: "Sender",
+  foreignKey: "senderId",
+  onDelete: "CASCADE",
+});
+Package.belongsTo(userModel, {
+  as: "Receiver",
+  foreignKey: "receiverId",
+  onDelete: "CASCADE",
+});
+
+userModel.hasMany(Package, {
+  as: "SentPackages",
+  foreignKey: "senderId",
+  onDelete: "CASCADE",
+});
+userModel.hasMany(Package, {
+  as: "ReceivedPackages",
+  foreignKey: "receiverId",
+  onDelete: "CASCADE",
+});
 
 (async () => {
   const client = await sequelize.sync();

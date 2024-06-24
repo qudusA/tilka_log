@@ -1,19 +1,20 @@
 import { Sequelize } from "sequelize";
 
 const sequelize = new Sequelize(
-  process.env.POSTGRES_DATABASE!,
-  // "tilkalogistic",
-  process.env.POSTGRES_USER_NAME!,
-  process.env.POSTGRES_PASSWORD!,
+  process.env.POSTGRES_DATABASE_PROD!,
+  process.env.POSTGRES_USER_NAME_PROD!,
+  process.env.POSTGRES_PASSWORD_PROD!,
   {
     dialect: "postgres",
-    port: 5433,
-    host: "127.0.0.1",
-    // dialectOptions: {
-    //   searchPath: "public", // Set the search path to public
-    // },
+    port: +process.env.POSTGRES_PORT_PROD!,
+    host: process.env.POSTGRES_HOST_PROD!,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
   }
 );
 
 export default sequelize;
-// host: "127.0.0.1"

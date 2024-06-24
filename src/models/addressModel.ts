@@ -82,6 +82,7 @@ Address.init(
   {
     sequelize,
     modelName: "address",
+    tableName: "address_tbl",
     indexes: [
       {
         unique: true,

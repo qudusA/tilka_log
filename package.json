@@ -12,6 +12,7 @@
   "author": "Qudus Olanrewaju",
   "license": "ISC",
   "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
     "aws-sdk": "^2.1626.0",
     "axios": "^1.7.2",
     "bcrypt": "^5.1.1",
@@ -51,12 +52,14 @@
     "@types/node": "^20.12.12",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^6.4.15",
+    "@types/paypal__checkout-server-sdk": "^1.0.8",
     "@types/paypal-rest-sdk": "^1.7.9",
     "@types/pg": "^8.11.6",
     "@types/sequelize": "^4.28.20",
     "@types/uuid": "^9.0.8",
     "@types/ws": "^8.5.10",
     "nodemon": "^3.1.0",
+    "sequelize-cli": "^6.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }

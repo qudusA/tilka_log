@@ -40,5 +40,5 @@ CartItems.init({
     //     return `${this.dataValues.quantity * this.dataValues.price}`;
     //   },
     // },
-}, { sequelize: sequelize_2.default, modelName: "cartItems" });
+}, { sequelize: sequelize_2.default, modelName: "cartItems", tableName: "cart_item_tbl" });
 exports.default = CartItems;

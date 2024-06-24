@@ -44,6 +44,7 @@ ProductModel.init({
     productStatus: {
         type: sequelize_1.DataTypes.STRING,
         allowNull: false,
+        defaultValue: "available",
         // defaultValue: function () {
         //   return +this.numbersOfProductAvailable === 0 ? "soldOut" : "available";
         // },
@@ -74,6 +75,7 @@ ProductModel.init({
 }, {
     sequelize: sequelize_2.default,
     modelName: "product",
+    tableName: "product_tbl",
     hooks: {
         // beforeSave: (product: ProductModel, options) => {
         //   if (+product.numbersOfProductAvailable === 0) {
@@ -82,18 +84,17 @@ ProductModel.init({
         //     product.productStatus = "available";
         //   }
         // },
-        beforeValidate: (product, options) => {
-            console.log("Before Save Hook:", product.numbersOfProductAvailable);
-            if (+product.numbersOfProductAvailable !== 0) {
-                console.log("else !== 0", product.numbersOfProductAvailable);
-                product.productStatus = "available";
-            }
-            else {
-                console.log("if ===0 ", product.numbersOfProductAvailable);
-                product.productStatus = "soldOut";
-            }
-            console.log("after Save Hook:", product.productStatus);
-        },
+        // beforeValidate: (product: ProductModel, options) => {
+        //   console.log("Before Save Hook:", product.numbersOfProductAvailable);
+        //   if (+product.numbersOfProductAvailable !== 0) {
+        //     console.log("else !== 0", product.numbersOfProductAvailable);
+        //     product.productStatus = "available";
+        //   } else {
+        //     console.log("if ===0 ", product.numbersOfProductAvailable);
+        //     product.productStatus = "soldOut";
+        //   }
+        //   console.log("after Save Hook:", product.productStatus);
+        // },
         beforeUpdate: (product, options) => {
             console.log("before update", product.numbersOfProductAvailable);
             if (+product.numbersOfProductAvailable !== 0) {

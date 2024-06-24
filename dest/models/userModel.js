@@ -61,5 +61,6 @@ User.init({
 }, {
     sequelize: sequelize_2.default,
     modelName: "user",
+    tableName: "user_tbl",
 });
 exports.default = User;

@@ -3,10 +3,11 @@ import sequelize from "../utils/sequelize";
 
 export interface DeliveryAttribute {
   id?: number;
-  orderId: number;
+  orderId?: number;
   driverId: number;
   latitude?: number;
   longitude?: number;
+  packageId?: number;
 }
 
 interface DeliveryOptional extends Optional<DeliveryAttribute, "id"> {}
@@ -16,10 +17,11 @@ class Delivery
   implements DeliveryAttribute
 {
   public id!: number;
-  public orderId!: number;
+  public orderId?: number;
   public driverId!: number;
   public latitude?: number;
   public longitude?: number;
+  public packageId?: number;
 }
 
 Delivery.init(
@@ -33,9 +35,12 @@ Delivery.init(
 
     orderId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
-
+    packageId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     driverId: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -50,6 +55,7 @@ Delivery.init(
   {
     sequelize,
     modelName: "Delivery",
+    tableName: "delivery_tbl",
   }
 );
 

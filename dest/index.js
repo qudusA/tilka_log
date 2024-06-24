@@ -43,6 +43,7 @@ const order_1 = __importDefault(require("./models/order"));
 const orderItems_1 = __importDefault(require("./models/orderItems"));
 const commandLindRunner_1 = __importDefault(require("./utils/commandLindRunner"));
 const delivery_1 = __importDefault(require("./models/delivery"));
+const package_1 = __importDefault(require("./models/package"));
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const wss = new ws_1.default.Server({ server });
@@ -236,8 +237,30 @@ orderItems_1.default.belongsTo(product_1.default, {
 });
 userModel_1.default.hasMany(delivery_1.default, { foreignKey: "driverId" });
 delivery_1.default.belongsTo(userModel_1.default, { foreignKey: "driverId" });
-order_1.default.hasOne(delivery_1.default, { foreignKey: "orderId" });
-delivery_1.default.belongsTo(order_1.default, { foreignKey: "orderId" });
+order_1.default.hasOne(delivery_1.default, { foreignKey: "orderId", onDelete: "CASCADE" });
+delivery_1.default.belongsTo(order_1.default, { foreignKey: "orderId", onDelete: "CASCADE" });
+package_1.default.hasOne(delivery_1.default, { foreignKey: "packageId", onDelete: "CASCADE" });
+delivery_1.default.belongsTo(package_1.default, { foreignKey: "packageId", onDelete: "CASCADE" });
+package_1.default.belongsTo(userModel_1.default, {
+    as: "Sender",
+    foreignKey: "senderId",
+    onDelete: "CASCADE",
+});
+package_1.default.belongsTo(userModel_1.default, {
+    as: "Receiver",
+    foreignKey: "receiverId",
+    onDelete: "CASCADE",
+});
+userModel_1.default.hasMany(package_1.default, {
+    as: "SentPackages",
+    foreignKey: "senderId",
+    onDelete: "CASCADE",
+});
+userModel_1.default.hasMany(package_1.default, {
+    as: "ReceivedPackages",
+    foreignKey: "receiverId",
+    onDelete: "CASCADE",
+});
 (() => __awaiter(void 0, void 0, void 0, function* () {
     const client = yield sequelize_1.default.sync();
     yield commandLindRunner_1.default.createSuperAdmin();

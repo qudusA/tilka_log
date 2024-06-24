@@ -1,4 +1,5 @@
 import { DataTypes, Model, Optional, Transaction } from "sequelize";
+import bcrypt from "bcrypt";
 import sequelize from "../utils/sequelize";
 import Token, { TokenAttributes } from "./tokenModel";
 import ProductModel, { ProductAttribute } from "./product";
@@ -98,7 +99,6 @@ User.init(
     password: {
       type: DataTypes.STRING,
       allowNull: false,
-
       validate: {
         len: {
           args: [10, 200],
@@ -126,6 +126,7 @@ User.init(
   {
     sequelize,
     modelName: "user",
+    tableName: "user_tbl",
   }
 );
 

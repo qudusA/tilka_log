@@ -61,6 +61,7 @@ OrderItem.init(
   {
     sequelize,
     modelName: "orderItems",
+    tableName: "order_items_tbl",
     hooks: {
       beforeCreate: (orderitems: OrderItem) => {
         orderitems.priceOfQuantity = orderitems.quantity * orderitems.unitPrice;

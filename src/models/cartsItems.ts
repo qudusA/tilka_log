@@ -22,7 +22,6 @@ type productType = {
   "product.productPrice": number;
   "product.createdAt": string;
   "product.updatedAt": string;
-  
 };
 export type combinedType = CartsItemsType & productType;
 
@@ -79,7 +78,7 @@ CartItems.init(
     //   },
     // },
   },
-  { sequelize, modelName: "cartItems" }
+  { sequelize, modelName: "cartItems", tableName: "cart_item_tbl" }
 );
 
 export default CartItems;

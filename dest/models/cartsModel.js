@@ -17,5 +17,5 @@ Carts.init({
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
     },
-}, { sequelize: sequelize_2.default, modelName: "cart", timestamps: false });
+}, { sequelize: sequelize_2.default, modelName: "cart", tableName: "cart_tbl" });
 exports.default = Carts;

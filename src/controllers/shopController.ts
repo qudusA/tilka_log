@@ -6,6 +6,7 @@ import cartModel from "../models/cartsModel";
 import sequelize from "../utils/sequelize";
 import { ErrorResponse } from "../response/error/ErrorResponse";
 import CartItems, { CartsItemsType, combinedType } from "../models/cartsItems";
+import { client } from "../utils/paypalClient";
 
 import paypal from "paypal-rest-sdk";
 import Order from "../models/order";
@@ -415,6 +416,99 @@ export default class ShopController {
     }
   }
 
+  // static async addCartItemsToOrder(
+  //   req: Request,
+  //   res: Response,
+  //   next: NextFunction
+  // ) {
+  //   try {
+  //     const userCart = await cartModel.findOne({
+  //       where: { userId: req.userId },
+  //       include: [
+  //         {
+  //           model: CartItems,
+  //           as: "cartItems",
+  //           include: [
+  //             {
+  //               model: ProductModel,
+  //               as: "product",
+  //             },
+  //           ],
+  //         },
+  //       ],
+  //     });
+
+  //     if (!userCart) {
+  //       console.log("User cart not found");
+  //       const err = new ErrorResponse("no item in cart...", "404", 404, {});
+  //       return res.status(404).json(err);
+  //     }
+
+  //     type val = {
+  //       id: number;
+  //       productName: string;
+  //       productId: number;
+  //       quantity: number;
+  //       cartId: number;
+  //       createdAt: Date;
+  //       updatedAt: Date;
+  //       product: { productPrice: number };
+  //     };
+
+  //     const [id, userId, cartItems] = Object.values(userCart.toJSON());
+  //     console.log(cartItems.cartId);
+
+  //     const totalValue: number = cartItems.reduce(
+  //       (acc: number, cur: val, _indx: number, _arr: []) => {
+  //         acc += +(cur.product.productPrice * cur.quantity);
+  //         return acc;
+  //       },
+  //       0
+  //     );
+
+  //     const createOrder = async () => {
+  //       const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
+  //       request.requestBody({
+  //         intent: "CAPTURE",
+  //         purchase_units: [
+  //           {
+  //             amount: {
+  //               currency_code: "NGN", // Set the currency to NGN
+  //               value: totalValue.toFixed(2),
+  //             },
+  //             description: "payment for booking a session with the doctor",
+  //             items: cartItems.map((item: val) => ({
+  //               name: item.productName,
+  //               sku: item.productId.toString(),
+  //               unit_amount: {
+  //                 currency_code: "NGN", // Set the currency to NGN
+  //                 value: item.product.productPrice.toFixed(2),
+  //               },
+  //               quantity: item.quantity.toString(),
+  //             })),
+  //           },
+  //         ],
+  //         application_context: {
+  //           return_url: `http://localhost:3000/order/success/${id}?total=${totalValue}`,
+  //           cancel_url: "http://localhost:3000/order/cancel",
+  //         },
+  //       });
+
+  //       return await client().execute(request);
+  //     };
+
+  //     const order = await createOrder();
+  //     res
+  //       .status(200)
+  //       .json({
+  //         redirect: order.result.links.find((link) => link.rel === "approve")
+  //           .href,
+  //       });
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // }
+
   static async addCartItemsToOrder(
     req: Request,
     res: Response,
@@ -426,7 +520,6 @@ export default class ShopController {
         client_id: process.env.PAYPAL_CLIENT_ID as string,
         client_secret: process.env.PAYPAL_SECRET as string,
       });
-      console.log(req.userId);
 
       const userCart = await cartModel.findOne({
         where: { userId: req.userId },
@@ -461,8 +554,9 @@ export default class ShopController {
         product: { productPrice: number };
       };
 
-      const [id, userId, cartItems] = Object.values(userCart.toJSON());
-      console.log(cartItems.cartId);
+      const [id, userId, cAt, uAt, cartItems] = Object.values(
+        userCart.toJSON()
+      );
 
       const totalValue: number = cartItems.reduce(
         (acc: number, cur: val, _indx: number, _arr: []) => {
@@ -475,15 +569,15 @@ export default class ShopController {
       const mapedArr: Array<{}> = cartItems.map((item: val) => {
         return { cartId: item.id, productId: item.productId };
       });
-      console.log(mapedArr, totalValue);
+
       const create_payment_json = {
         intent: "sale",
         payer: {
           payment_method: "paypal",
         },
         redirect_urls: {
-          return_url: `http://localhost:3000/order/success/${id}?total=${totalValue}`,
-          cancel_url: "http://localhost:3000/order/cancel",
+          return_url: `${req.protocol}://${req.headers.host}/order/success/${id}?total=${totalValue}`,
+          cancel_url: `${req.protocol}://${req.headers.host}/order/cancel`,
         },
         transactions: [
           {
@@ -502,7 +596,7 @@ export default class ShopController {
               currency: "USD",
               total: totalValue.toFixed(2),
             },
-            description: "payment for booking a session with the doctor",
+            description: "payment for service render or product",
           },
         ],
       };
@@ -511,15 +605,13 @@ export default class ShopController {
         create_payment_json,
         function (error, payment: paypal.PaymentResponse) {
           if (error) {
-            console.log(error?.response?.details);
             next(error);
           } else {
             console.log("Create Payment Response");
             const linkObj = payment.links?.find(
               (linksObj) => linksObj.rel === "approval_url"
             ) as paypal.Link;
-            console.log(linkObj);
-            // res.redirect(linkObj.href);
+
             res.status(200).json({ redirect: linkObj.href });
           }
         }

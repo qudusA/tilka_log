@@ -9,11 +9,16 @@ const {
   assignDeliveryToDriver,
   // postNonProcessOrders,
   trackDriverLocation,
+  sendPackage,
+  getAllAssingedDelivery,
+  getAllPackages,
+  getPackageToEdit,
+  updateWeight,
 } = LogisticController;
 
 const router = Router();
 
-router.route("/driver/current/location/:orderId").post(
+router.route("/driver/current/location").post(
   [
     query("latitude")
       .isFloat({ min: -90, max: 90 })
@@ -42,5 +47,11 @@ router
 
 // router.route("/:driverId").post(Auth, postNonProcessOrders);
 router.route("/track-driver-location/:orderId").get(Auth, trackDriverLocation);
+
+router.route("/user/package").post(Auth, sendPackage);
+router.route("/admin/package").get(Auth, getAllPackages);
+router.route("/driver/delivery").get(Auth, getAllAssingedDelivery);
+router.route("/package/edit/:packageId").get(Auth, getPackageToEdit);
+router.route("/package/update/:packageId").put(Auth, updateWeight);
 
 export default router;

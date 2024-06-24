@@ -79,6 +79,7 @@ ProductModel.init(
     productStatus: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: "available",
       // defaultValue: function () {
       //   return +this.numbersOfProductAvailable === 0 ? "soldOut" : "available";
       // },
@@ -111,6 +112,7 @@ ProductModel.init(
   {
     sequelize,
     modelName: "product",
+    tableName: "product_tbl",
     hooks: {
       // beforeSave: (product: ProductModel, options) => {
       //   if (+product.numbersOfProductAvailable === 0) {
@@ -119,17 +121,17 @@ ProductModel.init(
       //     product.productStatus = "available";
       //   }
       // },
-      beforeValidate: (product: ProductModel, options) => {
-        console.log("Before Save Hook:", product.numbersOfProductAvailable);
-        if (+product.numbersOfProductAvailable !== 0) {
-          console.log("else !== 0", product.numbersOfProductAvailable);
-          product.productStatus = "available";
-        } else {
-          console.log("if ===0 ", product.numbersOfProductAvailable);
-          product.productStatus = "soldOut";
-        }
-        console.log("after Save Hook:", product.productStatus);
-      },
+      // beforeValidate: (product: ProductModel, options) => {
+      //   console.log("Before Save Hook:", product.numbersOfProductAvailable);
+      //   if (+product.numbersOfProductAvailable !== 0) {
+      //     console.log("else !== 0", product.numbersOfProductAvailable);
+      //     product.productStatus = "available";
+      //   } else {
+      //     console.log("if ===0 ", product.numbersOfProductAvailable);
+      //     product.productStatus = "soldOut";
+      //   }
+      //   console.log("after Save Hook:", product.productStatus);
+      // },
       beforeUpdate: (product: ProductModel, options) => {
         console.log("before update", product.numbersOfProductAvailable);
         if (+product.numbersOfProductAvailable !== 0) {

@@ -20,11 +20,23 @@ const sequelize_1 = __importDefault(require("../utils/sequelize"));
 const userModel_1 = __importDefault(require("../models/userModel"));
 const sequelize_2 = require("sequelize");
 const delivery_1 = __importDefault(require("../models/delivery"));
+const package_1 = __importDefault(require("../models/package"));
+const addressModel_1 = __importDefault(require("../models/addressModel"));
 class LogisticController {
     static assignDeliveryToDriver(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
             const transaction = yield sequelize_1.default.transaction();
             try {
+                const { orderIds, packageIds } = req.query;
+                const { driverId } = req.params;
+                if ((!orderIds && !packageIds) || (orderIds && packageIds)) {
+                    return res.status(400).json({
+                        message: "You must provide either orderIds or packageIds, but not both.",
+                        status: "error",
+                        statusCode: 400,
+                        data: {},
+                    });
+                }
                 const foundAdmin = yield userModel_1.default.findOne({
                     where: { id: req.userId, role: "admin" },
                 });
@@ -33,11 +45,8 @@ class LogisticController {
                     const error = new ErrorResponse_1.ErrorResponse("admin not found", "not found", 404, "admin not found");
                     return res.status(404).json(error);
                 }
-                const { orderIds } = req.query;
-                const { driverId } = req.params;
-                console.log("driver id", driverId);
                 const foundDriver = (yield userModel_1.default.findByPk(driverId));
-                console.log(foundDriver);
+                console.log("found driver", foundDriver);
                 if (!foundDriver) {
                     transaction.rollback();
                     const error = new ErrorResponse_1.ErrorResponse("driver not found", "not found ", 404, "driver not found");
@@ -48,41 +57,73 @@ class LogisticController {
                     const err = new ErrorResponse_1.ErrorResponse("you can't assign this user", "401", 401, "you can't assign this user");
                     return res.status(401).json(err);
                 }
-                console.log("order id", typeof orderIds, orderIds);
-                const nonProccessOrders = yield order_1.default.findAll({
-                    where: {
-                        id: { [sequelize_2.Op.in]: orderIds },
-                        orderStatus: { [sequelize_2.Op.in]: ["On Hold", "Processing"] },
-                    },
-                });
-                console.log("nonProcess", nonProccessOrders);
-                if (nonProccessOrders.length < 1) {
-                    transaction.rollback();
-                    const error = new ErrorResponse_1.ErrorResponse("order not found", "not found", 404, "order not found");
-                    transaction.rollback();
-                    return res.status(404).json(error);
+                // let nonProccessOrders = undefined;
+                let deliveries, count;
+                if (orderIds) {
+                    console.log("not undefine");
+                    const nonProccessOrders = yield order_1.default.findAll({
+                        where: {
+                            id: { [sequelize_2.Op.in]: orderIds },
+                            orderStatus: { [sequelize_2.Op.in]: ["On Hold", "Processing"] },
+                        },
+                    });
+                    if (nonProccessOrders.length < 1) {
+                        transaction.rollback();
+                        const error = new ErrorResponse_1.ErrorResponse("order not found", "not found", 404, "order not found");
+                        transaction.rollback();
+                        return res.status(404).json(error);
+                    }
+                    deliveries = yield Promise.all(nonProccessOrders.map((order) => __awaiter(this, void 0, void 0, function* () {
+                        const delivery = yield delivery_1.default.create({
+                            orderId: order.id,
+                            driverId: foundDriver.id,
+                        }, { transaction });
+                        return delivery;
+                    })));
+                    [count] = yield order_1.default.update({ orderStatus: "Out for Delivery" }, {
+                        where: {
+                            id: nonProccessOrders.map((order) => order.id),
+                        },
+                        transaction,
+                    });
                 }
-                const deliveries = yield foundDriver.createDeliveries(nonProccessOrders, {
-                    transaction,
-                });
-                console.log("delivery", deliveries);
-                yield order_1.default.update({ orderStatus: "Out for Delivery" }, {
-                    where: {
-                        id: nonProccessOrders.map((order) => order.id),
-                    },
-                    transaction,
-                });
+                else {
+                    console.log("else block");
+                    const nonProccessPackage = yield package_1.default.findAll({
+                        where: {
+                            id: { [sequelize_2.Op.in]: packageIds },
+                            status: { [sequelize_2.Op.in]: ["On Hold", "Processing"] },
+                        },
+                    });
+                    if (nonProccessPackage.length < 1) {
+                        yield transaction.rollback();
+                        const error = new ErrorResponse_1.ErrorResponse("no items to process", "not found", 404, "no package to process");
+                        return res.status(404).json(error);
+                    }
+                    deliveries = yield Promise.all(nonProccessPackage.map((pack) => __awaiter(this, void 0, void 0, function* () {
+                        const delivery = yield delivery_1.default.create({
+                            packageId: pack.id,
+                            driverId: foundDriver.id,
+                        }, { transaction });
+                        return delivery;
+                    })));
+                    [count] = yield package_1.default.update({ status: "Driver Assiged" }, {
+                        where: {
+                            id: nonProccessPackage.map((pack) => pack.id),
+                        },
+                        transaction,
+                    });
+                }
                 transaction.commit();
                 res.status(201).json({
-                    message: "all data creation successful",
+                    message: `${count} data creation successful`,
                     status: "created",
                     statusCode: 201,
                     data: deliveries,
                 });
             }
             catch (error) {
-                transaction.rollback();
-                throw new Error(error);
+                yield transaction.rollback();
                 next(error);
             }
         });
@@ -94,9 +135,18 @@ class LogisticController {
                 const error = new ErrorResponse_1.ErrorResponse("invalide data", "error", 422, err.array());
                 return res.status(422).json(error);
             }
-            const { orderId } = req.params;
+            // const { orderId } = req.params;
             const transaction = yield sequelize_1.default.transaction();
             try {
+                const { latitude, longitude, orderId, packageId } = req.query;
+                if ((packageId && orderId) || (!packageId && !orderId)) {
+                    return res.status(400).json({
+                        message: "wrong input id",
+                        status: "error",
+                        statusCode: 404,
+                        data: {},
+                    });
+                }
                 const foundDriver = yield userModel_1.default.findByPk(req.userId);
                 if (!foundDriver) {
                     transaction.rollback();
@@ -120,19 +170,39 @@ class LogisticController {
                     return res.status(500).json(err);
                 }
                 const { lat, lon } = locationresponse.data;
-                const { latitude, longitude } = req.query;
                 const latit = latitude || lat;
                 const long = longitude || lon;
-                const foundOrder = yield order_1.default.findByPk(orderId);
-                if (!foundOrder) {
-                    const err = new ErrorResponse_1.ErrorResponse("no order found...", "404", 404, {});
-                    return res.status(404).json(err);
+                let foundDelivery = undefined;
+                if (orderId) {
+                    foundDelivery = yield delivery_1.default.findOne({ where: { orderId } });
+                    if (!foundDelivery) {
+                        transaction.rollback();
+                        return res.status(400).json({
+                            message: "wrong order id",
+                            status: "error",
+                            statusCode: 404,
+                            data: {},
+                        });
+                    }
+                    foundDelivery.longitude = long;
+                    foundDelivery.latitude = latit;
+                    yield foundDelivery.save();
                 }
-                yield foundOrder.createDelivery({
-                    driverId: +req.userId,
-                    latitude: latit,
-                    longitude: long,
-                }, { transaction });
+                else {
+                    foundDelivery = yield delivery_1.default.findOne({ where: { packageId } });
+                    if (!foundDelivery) {
+                        transaction.rollback();
+                        return res.status(400).json({
+                            message: "wrong pack id",
+                            status: "error",
+                            statusCode: 404,
+                            data: {},
+                        });
+                    }
+                    foundDelivery.longitude = long;
+                    foundDelivery.latitude = latit;
+                    yield foundDelivery.save();
+                }
                 transaction.commit();
                 res.status(201).json({
                     message: "success",
@@ -220,10 +290,11 @@ class LogisticController {
                 const { orderId } = req.params;
                 const foundDelivery = yield delivery_1.default.findOne({
                     where: { orderId },
+                    raw: true,
                     include: [
                         {
                             model: order_1.default,
-                            as: "orders",
+                            as: "order",
                         },
                     ],
                 });
@@ -235,8 +306,8 @@ class LogisticController {
                         data: {},
                     });
                 }
-                if (foundDelivery["orders.userId"] !== req.userId &&
-                    foundDelivery["orders.oderStatus"] !== "out for delivery") {
+                if (foundDelivery["order.userId"] !== req.userId &&
+                    foundDelivery["order.oderStatus"] !== "Out for Delivery") {
                     return res.status(404).json({
                         message: "no order to track",
                         status: "not found",
@@ -253,6 +324,241 @@ class LogisticController {
                 });
             }
             catch (error) {
+                next(error);
+            }
+        });
+    }
+    static sendPackage(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const transaction = yield sequelize_1.default.transaction();
+            try {
+                const { packageName, weight, receiverCity, receiverCountry, receiverState, receiverStreet, receiverZip, receiverHouseNumber, senderCity, senderCountry, senderState, senderStreet, senderZip, senderHouseNumber, } = req.body;
+                const { userId } = req;
+                const { receiverEmail } = req.query;
+                const foundUser = yield userModel_1.default.findAll({
+                    where: { [sequelize_2.Op.or]: { id: userId, email: receiverEmail } },
+                    raw: true,
+                });
+                if (foundUser.length < 2) {
+                    return res.status(404).json("wrong");
+                }
+                const [user1, user2] = foundUser;
+                let sender = undefined;
+                let receiver = undefined;
+                if (user1.id === +userId) {
+                    sender = user1;
+                    receiver = user2;
+                }
+                else {
+                    sender = user2;
+                    receiver = user1;
+                }
+                const func = function (city, country, state, street, zip, houseNumber, user) {
+                    return __awaiter(this, void 0, void 0, function* () {
+                        let foundUserAddress = undefined;
+                        foundUserAddress = yield addressModel_1.default.findOne({
+                            where: {
+                                city,
+                                street,
+                                houseNumber,
+                                userId: user.id,
+                            },
+                        });
+                        if (!foundUserAddress) {
+                            const curretAddress = yield addressModel_1.default.update({ deliveredTo: false }, { where: { userId: user.id, deliveredTo: true }, transaction });
+                            foundUserAddress = yield addressModel_1.default.create({
+                                userId: user.id,
+                                city,
+                                country,
+                                houseNumber,
+                                state,
+                                street,
+                                zip,
+                            }, { transaction });
+                        }
+                        else {
+                            const curretAddress = yield addressModel_1.default.update({ deliveredTo: false }, { where: { userId, deliveredTo: true }, transaction });
+                            foundUserAddress.deliveredTo = true;
+                            yield foundUserAddress.save();
+                        }
+                        return foundUserAddress;
+                    });
+                };
+                yield func(receiverCity, receiverCountry, receiverState, receiverStreet, receiverZip, receiverHouseNumber, receiver);
+                yield func(senderCity, senderCountry, senderState, senderStreet, senderZip, senderHouseNumber, sender);
+                const createdPackage = yield package_1.default.create({
+                    packageName,
+                    receiverId: receiver.id,
+                    senderId: sender.id,
+                });
+                transaction.commit();
+                res.status(200).json({
+                    message: "success",
+                    status: "success",
+                    statusCode: 200,
+                    data: createdPackage,
+                });
+            }
+            catch (error) {
+                yield transaction.rollback();
+                next(error);
+            }
+        });
+    }
+    static getAllPackages(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const allPackage = yield package_1.default.findAll({
+                    where: { status: "Processing" },
+                });
+                if (allPackage.length < 1) {
+                    return res.json(200).json({
+                        message: "package not found",
+                        status: "not found",
+                        statusCode: 200,
+                        data: allPackage,
+                    });
+                }
+                res.status(200).json({
+                    message: "package fetched",
+                    status: "fetch",
+                    statusCode: 200,
+                    data: allPackage,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        });
+    }
+    static getAllAssingedDelivery(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { userId } = req;
+                const foundUser = yield userModel_1.default.findByPk(userId);
+                if (!foundUser) {
+                    return res.json({
+                        message: "not found",
+                        status: "not found",
+                        statusCode: 404,
+                        data: "not found",
+                    });
+                }
+                if (foundUser.role !== "courier") {
+                    return res.json({
+                        message: "you dont have clearance for this task",
+                        status: "unAuthorized",
+                        statusCode: 401,
+                        data: "you dont have clearance for this task",
+                    });
+                }
+                const foundDelivery = yield delivery_1.default.findAll({
+                    where: { driverId: foundUser.id },
+                    include: [{ model: package_1.default, as: "package" }],
+                });
+                if (foundDelivery.length < 1) {
+                    return res.json({
+                        message: "not found",
+                        status: "not found",
+                        statusCode: 404,
+                        data: foundDelivery,
+                    });
+                }
+                res.status(200).json({
+                    message: "delivery fetched",
+                    status: "success",
+                    statusCode: 200,
+                    data: foundDelivery,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        });
+    }
+    static getPackageToEdit(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { edit } = req.query;
+                const { packageId } = req.params;
+                const { userId } = req;
+                const foundUser = yield userModel_1.default.findByPk(userId);
+                if (!foundUser) {
+                    return res.json({
+                        message: "not found",
+                        status: "not found",
+                        statusCode: 404,
+                        data: "not found",
+                    });
+                }
+                if (foundUser.role !== "courier") {
+                    return res.json({
+                        message: "you dont have clearance for this task",
+                        status: "unAuthorized",
+                        statusCode: 401,
+                        data: "you dont have clearance for this task",
+                    });
+                }
+                const foundPackage = yield package_1.default.findByPk(packageId);
+                if (!foundPackage) {
+                    return res.status(400).json({});
+                }
+                if (foundPackage.updateCount >= 2) {
+                    return res.status(401).json({
+                        message: "this item has been previously updated by you",
+                        status: "unAuthorized",
+                        statusCode: 401,
+                        data: {},
+                    });
+                }
+                res.status(200).json({
+                    message: "product fetched",
+                    status: "success",
+                    statusCode: 200,
+                    data: foundPackage,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        });
+    }
+    static updateWeight(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const transaction = yield sequelize_1.default.transaction();
+            try {
+                const { edit } = req.query;
+                const { packageId } = req.params;
+                const { weight } = req.body;
+                const { userId } = req;
+                const foundUser = yield userModel_1.default.findByPk(userId);
+                if (!foundUser) {
+                    return res.json({
+                        message: "not found",
+                        status: "not found",
+                        statusCode: 404,
+                        data: "not found",
+                    });
+                }
+                if (foundUser.role !== "courier") {
+                    return res.json({
+                        message: "you dont have clearance for this task",
+                        status: "unAuthorized",
+                        statusCode: 401,
+                        data: "you dont have clearance for this task",
+                    });
+                }
+                const update = yield package_1.default.update({ weight }, { where: { id: packageId }, transaction, individualHooks: true });
+                transaction.commit();
+                res.status(201).json({
+                    message: "update successful",
+                    status: "update",
+                    statusCode: 201,
+                    data: {},
+                });
+            }
+            catch (error) {
+                transaction.rollback();
                 next(error);
             }
         });
