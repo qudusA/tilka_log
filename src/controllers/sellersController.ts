@@ -6,8 +6,6 @@ import userModel from "../models/userModel";
 import { ErrorResponse } from "../response/error/ErrorResponse";
 import { Ok } from "../response/ok/okResponse";
 import sequelize from "../utils/sequelize";
-import path from "path";
-import fs from "fs/promises";
 import sharp from "sharp";
 import crypto from "crypto";
 import {
@@ -35,11 +33,13 @@ class SellersController {
 
       return res.status(422).json(error);
     }
+
     const transaction = await sequelize.transaction();
     try {
       const sellerId = req.userId;
 
       const seller = await userModel.findByPk(sellerId);
+
       if (!seller)
         throw new ErrorResponse("user not found", "not found", 404, {});
 
@@ -48,17 +48,17 @@ class SellersController {
 
       const productImage = req.file;
 
-      const sharpBuff = await sharp()
+      const sharpBuff = await sharp(productImage?.buffer)
         .resize({ width: 1920, height: 1090, fit: "contain" })
         .toBuffer();
 
       const productImageUri = crypto.randomBytes(32).toString("hex");
 
       const params = {
-        Bucket: process.env.BUCKET as string,
+        Bucket: process.env.BUCKET_NAME as string,
         Key: productImageUri,
         ContentType: productImage?.mimetype,
-        Buffer: sharpBuff,
+        Body: sharpBuff,
       };
       const img = new PutObjectCommand(params);
       await s3clientHelper.send(img);
@@ -224,10 +224,14 @@ class SellersController {
       if (!productImageUri) {
         productImageUri = foundProduct.productImageUri;
       } else {
+        productImageUri = foundProduct.productImageUri;
+        const imgBuf = await sharp(req.file?.buffer)
+          .resize({ width: 1, height: 1090, fit: "contain" })
+          .toBuffer();
         const params = {
-          Key: foundProduct.productImageUri,
+          Key: productImageUri,
           Bucket: process.env.BUCKET_NAME,
-          Buffer: req.file?.buffer,
+          Body: imgBuf,
           ContentType: req.file?.mimetype,
         };
 

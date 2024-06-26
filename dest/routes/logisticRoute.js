@@ -34,9 +34,21 @@ router
     .post(auth_1.default, assignDeliveryToDriver);
 // router.route("/:driverId").post(Auth, postNonProcessOrders);
 router.route("/track-driver-location/:orderId").get(auth_1.default, trackDriverLocation);
-router.route("/user/package").post(auth_1.default, sendPackage);
+router
+    .route("/user/package")
+    .post(auth_1.default, [
+    (0, express_validator_1.body)("packageName")
+        .isString()
+        .withMessage("package name is not optional and can't be a number"),
+], sendPackage);
 router.route("/admin/package").get(auth_1.default, getAllPackages);
 router.route("/driver/delivery").get(auth_1.default, getAllAssingedDelivery);
 router.route("/package/edit/:packageId").get(auth_1.default, getPackageToEdit);
-router.route("/package/update/:packageId").put(auth_1.default, updateWeight);
+router
+    .route("/package/update/:packageId")
+    .put(auth_1.default, [
+    (0, express_validator_1.body)("weight")
+        .isNumeric()
+        .withMessage("weight can't be emplty nor anything other than a number..."),
+], updateWeight);
 exports.default = router;

@@ -18,14 +18,11 @@ const http_1 = __importDefault(require("http"));
 const express_1 = __importDefault(require("express"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const multer_1 = __importDefault(require("multer"));
-const uuid_1 = require("uuid");
 const node_cron_1 = __importDefault(require("node-cron"));
 const ws_1 = __importDefault(require("ws"));
-// import { Server } from "socket.io";
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
 const compression_1 = __importDefault(require("compression"));
-// import { capturePayment, createOrder } from "./utils/paypal";
 const sequelize_1 = __importDefault(require("./utils/sequelize"));
 const shopRoute_1 = __importDefault(require("./routes/shopRoute"));
 const signupRoute_1 = __importDefault(require("./routes/signupRoute"));
@@ -47,11 +44,7 @@ const package_1 = __importDefault(require("./models/package"));
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const wss = new ws_1.default.Server({ server });
-// const io = new Server(httpServer, {
-//   cors: {
-//     origin: "http://127.0.0.1:5500",
-//   },
-// });
+app.set("trust proxy", 1);
 app.use((req, res, next) => {
     res.setHeader("ACCESS-CONTROL-ALLOW-ORIGIN", "*");
     res.setHeader("Access-Control-Allow-Method", "GET, POST, PUT, PATCH, DELETE");
@@ -59,7 +52,6 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Credentials", "true");
     next();
 });
-// app.use(express.static("public"));
 const log = fs_1.default.createWriteStream(path_1.default.join(__dirname, "access.log"), {
     flags: "a",
 });
@@ -67,24 +59,8 @@ app.use(body_parser_1.default.urlencoded({ extended: false }));
 app.use(body_parser_1.default.json());
 app.use((0, compression_1.default)());
 app.use((0, helmet_1.default)());
-// app.use(
-//   helmet.contentSecurityPolicy({
-//     directives: {
-//       defaultSrc: ["'self'"],
-//       scriptSrc: ["'self'", "https://cdn.socket.io"],
-//       // add other CSP directives as needed
-//     },
-//   })
-// );
 app.use((0, morgan_1.default)("combined", { stream: log }));
-const storage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "images");
-    },
-    filename: (req, file, cb) => {
-        cb(null, (0, uuid_1.v4)() + file.originalname);
-    },
-});
+const storage = multer_1.default.memoryStorage();
 const fileFilter = (req, file, cb) => {
     if (file.mimetype === "image/jpeg" || file.mimetype === "image/jpg") {
         cb(null, true);
@@ -93,7 +69,6 @@ const fileFilter = (req, file, cb) => {
         cb(null, false);
     }
 };
-app.use((0, multer_1.default)({ storage, fileFilter }).single("productImageUri"));
 node_cron_1.default.schedule("0 * * * * ", () => __awaiter(void 0, void 0, void 0, function* () {
     const foundUser = yield userModel_1.default.findAll({
         where: { isVerified: false },
@@ -113,7 +88,7 @@ node_cron_1.default.schedule("0 * * * * ", () => __awaiter(void 0, void 0, void 
 }));
 app.use(shopRoute_1.default);
 app.use(signupRoute_1.default);
-app.use(sellersRouter_1.default);
+app.use((0, multer_1.default)({ storage }).single("productImageUri"), sellersRouter_1.default);
 app.use(changeDateRoute_1.default);
 app.use(logisticRoute_1.default);
 wss.on("connection", (socket) => {
@@ -123,7 +98,6 @@ wss.on("connection", (socket) => {
     console.log("socket here", socket);
     socket.send("hello my people this is the server...");
 });
-// io.on("connection", (socket) => {
 //   console.log("A user connected with id:", socket.id);
 // socket.on("register", async (userId: string, role: "buyer" | "driver") => {
 //   console.log(

@@ -330,6 +330,15 @@ class LogisticController {
     }
     static sendPackage(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
+            const error = (0, express_validator_1.validationResult)(req);
+            if (!error.array()) {
+                return res.status(422).json({
+                    message: "invalid data input",
+                    status: "validation",
+                    statusCode: 422,
+                    data: error.array(),
+                });
+            }
             const transaction = yield sequelize_1.default.transaction();
             try {
                 const { packageName, weight, receiverCity, receiverCountry, receiverState, receiverStreet, receiverZip, receiverHouseNumber, senderCity, senderCountry, senderState, senderStreet, senderZip, senderHouseNumber, } = req.body;
@@ -525,6 +534,15 @@ class LogisticController {
     }
     static updateWeight(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
+            const error = (0, express_validator_1.validationResult)(req);
+            if (!error.array()) {
+                return res.status(422).json({
+                    message: "invalid data input",
+                    status: "validation",
+                    statusCode: 422,
+                    data: error.array(),
+                });
+            }
             const transaction = yield sequelize_1.default.transaction();
             try {
                 const { edit } = req.query;

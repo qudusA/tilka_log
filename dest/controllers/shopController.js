@@ -17,12 +17,15 @@ const cartsModel_1 = __importDefault(require("../models/cartsModel"));
 const sequelize_1 = __importDefault(require("../utils/sequelize"));
 const ErrorResponse_1 = require("../response/error/ErrorResponse");
 const cartsItems_1 = __importDefault(require("../models/cartsItems"));
+const client_s3_1 = require("@aws-sdk/client-s3");
+const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 const paypal_rest_sdk_1 = __importDefault(require("paypal-rest-sdk"));
 const userModel_1 = __importDefault(require("../models/userModel"));
 const addressModel_1 = __importDefault(require("../models/addressModel"));
 const sequelize_2 = require("sequelize");
 const orderItems_1 = __importDefault(require("../models/orderItems"));
 const express_validator_1 = require("express-validator");
+const s3clientHelper_1 = __importDefault(require("../utils/s3clientHelper"));
 class ShopController {
     constructor() { }
     static getShop(req, res, next) {
@@ -41,6 +44,16 @@ class ShopController {
                         statusCode: 200,
                         data: [],
                     });
+                }
+                for (const item of allProduct) {
+                    const img = new client_s3_1.GetObjectCommand({
+                        Key: item.productImageUri,
+                        Bucket: process.env.BUCKET_NAME,
+                    });
+                    const url = yield (0, s3_request_presigner_1.getSignedUrl)(s3clientHelper_1.default, img, {
+                        expiresIn: 3600,
+                    });
+                    item.productImageUri = url;
                 }
                 res.status(200).json({
                     message: "successful",
@@ -263,7 +276,7 @@ class ShopController {
                 if (cartItems.length === 0) {
                     // const err = new ErrorResponse("no item in cart...", "404", 404, {});
                     // return res.status(404).json(err);
-                    res.status(200).json({
+                    return res.status(200).json({
                         message: "no item in cart...",
                         status: "success",
                         statusCode: 200,
@@ -289,7 +302,7 @@ class ShopController {
                 const address = yield addressModel_1.default.findAll({ where: { userId } });
                 if (address.length < 1) {
                     console.log("length is zero");
-                    const url = `${req.protocol}://${req.headers.host}/add-address`;
+                    const url = `${ShopController.BASE_URL}/add-address`;
                     return res.status(301).json({
                         message: "redirect msg",
                         status: "redirect",
@@ -457,7 +470,6 @@ class ShopController {
                     ],
                 });
                 if (!userCart) {
-                    console.log("User cart not found");
                     const err = new ErrorResponse_1.ErrorResponse("no item in cart...", "404", 404, {});
                     return res.status(404).json(err);
                 }
@@ -475,8 +487,8 @@ class ShopController {
                         payment_method: "paypal",
                     },
                     redirect_urls: {
-                        return_url: `${req.protocol}://${req.headers.host}/order/success/${id}?total=${totalValue}`,
-                        cancel_url: `${req.protocol}://${req.headers.host}/order/cancel`,
+                        return_url: `${ShopController}/order/success/${id}?total=${totalValue}`,
+                        cancel_url: `${ShopController}/order/cancel`,
                     },
                     transactions: [
                         {
@@ -550,8 +562,6 @@ class ShopController {
                     include: [{ model: product_1.default, as: "product" }],
                     raw: true,
                 });
-                console.log("total cart", userCart);
-                // console.log(userCart);
                 const foundUser = yield userModel_1.default.findOne({ where: { id: userId } });
                 if (!foundUser) {
                     return next("user not found...");
@@ -566,7 +576,6 @@ class ShopController {
                     totalAmount: +total,
                     deliveryAddress: deliveredAddress[0].id,
                 }, { transaction });
-                console.log("createdOrder", createdOrder);
                 const cartArr = userCart.map((currentObj) => {
                     return {
                         productId: currentObj.productId,
@@ -589,9 +598,7 @@ class ShopController {
                         transaction,
                     });
                 }
-                console.log("after for each");
                 yield cartsItems_1.default.destroy({ where: { cartId }, transaction });
-                console.log("after destroy");
                 yield transaction.commit();
                 res.status(201).json({
                     message: "successful",
@@ -610,4 +617,5 @@ class ShopController {
         res.status(400).json({ message: "cancelled" });
     }
 }
+ShopController.BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 exports.default = ShopController;

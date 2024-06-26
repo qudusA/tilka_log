@@ -17,8 +17,11 @@ const product_1 = __importDefault(require("../models/product"));
 const userModel_1 = __importDefault(require("../models/userModel"));
 const ErrorResponse_1 = require("../response/error/ErrorResponse");
 const sequelize_1 = __importDefault(require("../utils/sequelize"));
-const path_1 = __importDefault(require("path"));
-const promises_1 = __importDefault(require("fs/promises"));
+const sharp_1 = __importDefault(require("sharp"));
+const crypto_1 = __importDefault(require("crypto"));
+const client_s3_1 = require("@aws-sdk/client-s3");
+const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
+const s3clientHelper_1 = __importDefault(require("../utils/s3clientHelper"));
 class SellersController {
     static postProduct(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -36,7 +39,19 @@ class SellersController {
                 if (seller.role === "user" || seller.role === "courier")
                     throw new ErrorResponse_1.ErrorResponse("unAuthorised request", "error", 422, {});
                 const productImage = req.file;
-                const productImageUri = productImage === null || productImage === void 0 ? void 0 : productImage.path;
+                const sharpBuff = yield (0, sharp_1.default)()
+                    .resize({ width: 1920, height: 1090, fit: "contain" })
+                    .toBuffer();
+                const productImageUri = crypto_1.default.randomBytes(32).toString("hex");
+                console.log(productImageUri);
+                const params = {
+                    Bucket: process.env.BUCKET,
+                    Key: productImageUri,
+                    ContentType: productImage === null || productImage === void 0 ? void 0 : productImage.mimetype,
+                    Buffer: sharpBuff,
+                };
+                const img = new client_s3_1.PutObjectCommand(params);
+                yield s3clientHelper_1.default.send(img);
                 const { productName, productPrice, productDescription, numbersOfProductAvailable, categories, } = req.body;
                 const product = yield seller.createProduct({
                     productName,
@@ -77,6 +92,16 @@ class SellersController {
                     const err = new ErrorResponse_1.ErrorResponse("product not found", "error", 404, {});
                     return res.status(404).json(err);
                 }
+                for (const img of allSellersProducts) {
+                    const result = new client_s3_1.GetObjectCommand({
+                        Bucket: process.env.BUCKET_NAME,
+                        Key: img.productImageUri,
+                    });
+                    const url = yield (0, s3_request_presigner_1.getSignedUrl)(s3clientHelper_1.default, result, {
+                        expiresIn: 3600,
+                    });
+                    img.productImageUri = url;
+                }
                 res.status(200).json({
                     message: "success",
                     status: "success",
@@ -91,6 +116,7 @@ class SellersController {
     }
     static updateProduct(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             const err = (0, express_validator_1.validationResult)(req);
             if (!err.isEmpty()) {
                 const error = new ErrorResponse_1.ErrorResponse("invalid input data", "error", 422, err.array());
@@ -134,9 +160,14 @@ class SellersController {
                     productImageUri = foundProduct.productImageUri;
                 }
                 else {
-                    const imagePath = path_1.default.join(__dirname, "..", "..");
-                    const fullImagePath = path_1.default.join(imagePath, foundProduct.productImageUri.replace("\\", "/"));
-                    const result = yield promises_1.default.unlink(fullImagePath);
+                    const params = {
+                        Key: foundProduct.productImageUri,
+                        Bucket: process.env.BUCKET_NAME,
+                        Buffer: (_a = req.file) === null || _a === void 0 ? void 0 : _a.buffer,
+                        ContentType: (_b = req.file) === null || _b === void 0 ? void 0 : _b.mimetype,
+                    };
+                    const obj = new client_s3_1.PutObjectCommand(params);
+                    yield s3clientHelper_1.default.send(obj);
                 }
                 yield foundProduct.update({
                     productName,
@@ -174,9 +205,12 @@ class SellersController {
                     transaction.rollback();
                     throw new ErrorResponse_1.ErrorResponse("you are not authorized to do that...", "unAuthorized", 401, {});
                 }
-                const imagePath = path_1.default.join(__dirname, "..", "..");
-                const fullImagePath = path_1.default.join(imagePath, foundProduct === null || foundProduct === void 0 ? void 0 : foundProduct.productImageUri.replace("\\", "/"));
-                yield promises_1.default.unlink(fullImagePath);
+                const params = {
+                    Key: foundProduct.productImageUri,
+                    Bucket: process.env.BUCKET_NAME,
+                };
+                const obj = new client_s3_1.DeleteObjectCommand(params);
+                yield s3clientHelper_1.default.send(obj);
                 yield (foundProduct === null || foundProduct === void 0 ? void 0 : foundProduct.destroy());
                 transaction.commit();
                 res.status(200).json({

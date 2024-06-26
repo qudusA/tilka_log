@@ -7,6 +7,8 @@ import sequelize from "../utils/sequelize";
 import { ErrorResponse } from "../response/error/ErrorResponse";
 import CartItems, { CartsItemsType, combinedType } from "../models/cartsItems";
 import { client } from "../utils/paypalClient";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import paypal from "paypal-rest-sdk";
 import Order from "../models/order";
@@ -15,6 +17,7 @@ import Address from "../models/addressModel";
 import { Sequelize, UniqueConstraintError } from "sequelize";
 import OrderItem, { OrderItemAttribute } from "../models/orderItems";
 import { validationResult } from "express-validator";
+import s3clientHelper from "../utils/s3clientHelper";
 
 export default class ShopController {
   private static BASE_URL = process.env.BASE_URL || "http://localhost:3000";
@@ -40,11 +43,23 @@ export default class ShopController {
           data: [],
         });
       }
+
+      for (const item of allProduct) {
+        const img = new GetObjectCommand({
+          Key: item.productImageUri,
+          Bucket: process.env.BUCKET_NAME,
+        });
+        const url = await getSignedUrl(s3clientHelper, img, {
+          expiresIn: 3600,
+        });
+        console.log(item.productImageUri);
+        item.productImageUri = url;
+      }
       res.status(200).json({
         message: "successful",
         status: "success",
         statusCode: 200,
-        data: { ...allProduct },
+        data: allProduct,
       });
     } catch (error) {
       next(error);
@@ -62,13 +77,23 @@ export default class ShopController {
         raw: true,
       });
       if (!foundProduct) {
-        res.status(404).json({
+        return res.status(404).json({
           message: "product not found",
           status: "error",
           statusCode: 404,
           data: {},
         });
       }
+
+      const img = new GetObjectCommand({
+        Key: foundProduct.productImageUri,
+        Bucket: process.env.BUCKET_NAME,
+      });
+      const url = await getSignedUrl(s3clientHelper, img, {
+        expiresIn: 3600,
+      });
+
+      foundProduct.productImageUri = url;
       res.status(200).json({
         message: "successful",
         status: "success",

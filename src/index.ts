@@ -69,8 +69,6 @@ const fileFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-app.use(multer({ storage, fileFilter }).single("productImageUri"));
-
 type toke = {
   "tokens.id": number;
   "tokens.expirationTime": Date;
@@ -100,6 +98,7 @@ cron.schedule("0 * * * * ", async () => {
     }
   });
 });
+app.use(multer({ storage, fileFilter }).single("productImageUri"));
 
 app.use(shopRouter);
 app.use(signupRouter);
