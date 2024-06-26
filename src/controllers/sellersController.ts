@@ -8,6 +8,15 @@ import { Ok } from "../response/ok/okResponse";
 import sequelize from "../utils/sequelize";
 import path from "path";
 import fs from "fs/promises";
+import sharp from "sharp";
+import crypto from "crypto";
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import s3clientHelper from "../utils/s3clientHelper";
 
 class SellersController {
   static async postProduct(
@@ -39,7 +48,20 @@ class SellersController {
 
       const productImage = req.file;
 
-      const productImageUri = productImage?.path;
+      const sharpBuff = await sharp()
+        .resize({ width: 1920, height: 1090, fit: "contain" })
+        .toBuffer();
+
+      const productImageUri = crypto.randomBytes(32).toString("hex");
+
+      const params = {
+        Bucket: process.env.BUCKET as string,
+        Key: productImageUri,
+        ContentType: productImage?.mimetype,
+        Buffer: sharpBuff,
+      };
+      const img = new PutObjectCommand(params);
+      await s3clientHelper.send(img);
 
       const {
         productName,
@@ -109,6 +131,17 @@ class SellersController {
           {}
         );
         return res.status(404).json(err);
+      }
+
+      for (const img of allSellersProducts) {
+        const result = new GetObjectCommand({
+          Bucket: process.env.BUCKET_NAME,
+          Key: img.productImageUri,
+        });
+        const url = await getSignedUrl(s3clientHelper, result, {
+          expiresIn: 3600,
+        });
+        img.productImageUri = url;
       }
       res.status(200).json({
         message: "success",
@@ -191,13 +224,15 @@ class SellersController {
       if (!productImageUri) {
         productImageUri = foundProduct.productImageUri;
       } else {
-        const imagePath = path.join(__dirname, "..", "..");
-        const fullImagePath = path.join(
-          imagePath,
-          foundProduct.productImageUri.replace("\\", "/")
-        );
+        const params = {
+          Key: foundProduct.productImageUri,
+          Bucket: process.env.BUCKET_NAME,
+          Buffer: req.file?.buffer,
+          ContentType: req.file?.mimetype,
+        };
 
-        const result = await fs.unlink(fullImagePath);
+        const obj = new PutObjectCommand(params);
+        await s3clientHelper.send(obj);
       }
 
       await foundProduct.update(
@@ -247,12 +282,13 @@ class SellersController {
           {}
         );
       }
-      const imagePath = path.join(__dirname, "..", "..");
-      const fullImagePath = path.join(
-        imagePath,
-        foundProduct?.productImageUri.replace("\\", "/")!
-      );
-      await fs.unlink(fullImagePath);
+      const params = {
+        Key: foundProduct.productImageUri,
+        Bucket: process.env.BUCKET_NAME,
+      };
+
+      const obj = new DeleteObjectCommand(params);
+      await s3clientHelper.send(obj);
       await foundProduct?.destroy();
       transaction.commit();
       res.status(200).json({

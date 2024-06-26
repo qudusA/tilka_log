@@ -6,18 +6,12 @@ import express from "express";
 import bodyParser, { urlencoded } from "body-parser";
 import { Request, Response, NextFunction } from "express-serve-static-core";
 import multer from "multer";
-import { v4 as uuidv4 } from "uuid";
 import cron from "node-cron";
 import WebSocket from "ws";
-
-// import { Server } from "socket.io";
 
 import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
-import axios from "axios";
-
-// import { capturePayment, createOrder } from "./utils/paypal";
 
 import sequelize from "./utils/sequelize";
 import shopRouter from "./routes/shopRoute";
@@ -45,7 +39,6 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-
 app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
@@ -66,14 +59,7 @@ app.use(helmet());
 
 app.use(morgan("combined", { stream: log }));
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "images");
-  },
-  filename: (req, file, cb) => {
-    cb(null, uuidv4() + file.originalname);
-  },
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (req: any, file: any, cb: any) => {
   if (file.mimetype === "image/jpeg" || file.mimetype === "image/jpg") {

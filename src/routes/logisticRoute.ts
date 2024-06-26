@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { query } from "express-validator";
+import { query, body } from "express-validator";
 
 import LogisticController from "../controllers/logisticController";
 import Auth from "../middleware/auth";
@@ -48,10 +48,32 @@ router
 // router.route("/:driverId").post(Auth, postNonProcessOrders);
 router.route("/track-driver-location/:orderId").get(Auth, trackDriverLocation);
 
-router.route("/user/package").post(Auth, sendPackage);
+router
+  .route("/user/package")
+  .post(
+    Auth,
+    [
+      body("packageName")
+        .isString()
+        .withMessage("package name is not optional and can't be a number"),
+    ],
+    sendPackage
+  );
 router.route("/admin/package").get(Auth, getAllPackages);
 router.route("/driver/delivery").get(Auth, getAllAssingedDelivery);
 router.route("/package/edit/:packageId").get(Auth, getPackageToEdit);
-router.route("/package/update/:packageId").put(Auth, updateWeight);
+router
+  .route("/package/update/:packageId")
+  .put(
+    Auth,
+    [
+      body("weight")
+        .isNumeric()
+        .withMessage(
+          "weight can't be emplty nor anything other than a number..."
+        ),
+    ],
+    updateWeight
+  );
 
 export default router;

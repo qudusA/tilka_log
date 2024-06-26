@@ -455,6 +455,15 @@ export default class LogisticController {
     res: Response,
     next: NextFunction
   ) {
+    const error = validationResult(req);
+    if (!error.array()) {
+      return res.status(422).json({
+        message: "invalid data input",
+        status: "validation",
+        statusCode: 422,
+        data: error.array(),
+      });
+    }
     const transaction = await sequelize.transaction();
     try {
       const {
@@ -715,6 +724,15 @@ export default class LogisticController {
     res: Response,
     next: NextFunction
   ) {
+    const error = validationResult(req);
+    if (!error.array()) {
+      return res.status(422).json({
+        message: "invalid data input",
+        status: "validation",
+        statusCode: 422,
+        data: error.array(),
+      });
+    }
     const transaction = await sequelize.transaction();
     try {
       const { edit } = req.query;
