@@ -16,6 +16,9 @@ import Address from "../models/addressModel";
 import { SignupEntity } from "../entity/signupEntity";
 import { Ok } from "../response/ok/okResponse";
 import { ErrorResponse } from "../response/error/ErrorResponse";
+import Token from "../models/tokenModel";
+import { JwtPayload } from "../entity/JwtPayLoad";
+import { Op } from "sequelize";
 
 export class SignUpController {
   private static BASE_URL = process.env.BASE_URL || "http://localhost:3000";
@@ -216,7 +219,21 @@ export class SignUpController {
           {}
         );
 
-      const jwToken = await jwt.sign(
+      const userToken = await Token.findAll({
+        where: {
+          // expirationTime: { [Op.lt]: Date.now() },
+          userId: foundUser.id,
+          isTokenValid: true,
+        },
+      });
+
+      if (userToken.length > 1) {
+        for (const foundTok of userToken) {
+          await foundTok.destroy();
+        }
+      }
+
+      const refreshJwToken = await jwt.sign(
         {
           email,
           userId: foundUser.id,
@@ -224,7 +241,26 @@ export class SignUpController {
           role: foundUser.role,
         },
         process.env.TOKEN_SECRET!,
-        { expiresIn: "1h" }
+        { expiresIn: "1d" }
+      );
+
+      await foundUser.createToken(
+        {
+          token: refreshJwToken,
+          expirationTime: new Date(Date.now() + 1000 * 60 * 60 * 24),
+        },
+        transaction
+      );
+
+      const accessJwToken = await jwt.sign(
+        {
+          email,
+          userId: foundUser.id,
+          isUserVerified: foundUser.isVerified,
+          role: foundUser.role,
+        },
+        process.env.TOKEN_SECRET!,
+        { expiresIn: "15m" }
       );
 
       await transaction.commit();
@@ -232,10 +268,99 @@ export class SignUpController {
         status: "success",
         statusCode: 200,
         message: "login",
-        data: jwToken,
+        data: { accessJwToken, refreshJwToken },
       });
     } catch (error) {
       await transaction.rollback();
+      next(error);
+    }
+  }
+
+  async postLogOut(req: Request, res: Response, next: NextFunction) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { refreshJwToken } = req.body;
+
+      const foundToken = await Token.findOne({
+        where: { token: refreshJwToken, userId: req.userId },
+      });
+      if (!foundToken) {
+        return res.status(401).json({
+          message: "No token found",
+          status: "error",
+          statusCode: 401,
+          data: {},
+        });
+      }
+
+      await foundToken.destroy();
+      transaction.commit();
+      res.status(200).json({
+        message: "logout successful",
+        status: "success",
+        statusCode: 200,
+        data: {},
+      });
+    } catch (error) {
+      transaction.rollback();
+      next(error);
+    }
+  }
+
+  async refreshToken(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        return res.status(401).json({
+          message: "No token provided",
+          status: "error",
+          statusCode: 401,
+          data: {},
+        });
+      }
+
+      const foundToken = await Token.findOne({
+        where: {
+          token: refreshToken, //userId: req.userId
+        },
+      });
+      if (!foundToken) {
+        const error = new ErrorResponse(
+          "unAuthorized request",
+          "unAuthorized",
+          401,
+          {}
+        );
+        return res.status(401).json(error);
+      }
+      const decoded = (await jwt.verify(
+        refreshToken,
+        process.env.TOKEN_SECRET!
+      )) as JwtPayload;
+      if (!decoded) {
+        const error = new ErrorResponse(
+          "unAuthorized request",
+          "unAuthorized",
+          401,
+          {}
+        );
+        return res.status(401).json(error);
+      }
+
+      const newAccessToken = jwt.sign(
+        {
+          email: decoded.email,
+          userId: decoded.userId,
+          isUserVerified: decoded.isUserVerified,
+          role: decoded.role,
+        },
+        process.env.TOKEN_SECRET!,
+        { expiresIn: "15m" }
+      );
+
+      res.status(200).json({ accessToken: newAccessToken });
+    } catch (error) {
       next(error);
     }
   }

@@ -17,7 +17,8 @@ const express_validator_1 = require("express-validator");
 const userModel_1 = __importDefault(require("../models/userModel"));
 const signupController_1 = require("../controllers/signupController");
 const axios_1 = __importDefault(require("axios"));
-const { postSignUp, postVerify, postLogin, postForgetPassword, postPasswordReset, } = new signupController_1.SignUpController();
+const auth_1 = __importDefault(require("../middleware/auth"));
+const { postSignUp, postVerify, postLogin, postForgetPassword, postPasswordReset, postLogOut, refreshToken, } = new signupController_1.SignUpController();
 const router = (0, express_1.Router)();
 router.post("/signup", [
     (0, express_validator_1.body)("email", "this is not a valid email address...")
@@ -180,6 +181,8 @@ router.post("/login", [
         return true;
     }),
 ], postLogin);
+router.route("/logout").post(auth_1.default, postLogOut);
+router.route("/refreshtoken").get(auth_1.default, refreshToken);
 router.post("/forgetpassword", [
     (0, express_validator_1.body)("email")
         .trim()

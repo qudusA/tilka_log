@@ -39,16 +39,15 @@ class SellersController {
                 if (seller.role === "user" || seller.role === "courier")
                     throw new ErrorResponse_1.ErrorResponse("unAuthorised request", "error", 422, {});
                 const productImage = req.file;
-                const sharpBuff = yield (0, sharp_1.default)()
+                const sharpBuff = yield (0, sharp_1.default)(productImage === null || productImage === void 0 ? void 0 : productImage.buffer)
                     .resize({ width: 1920, height: 1090, fit: "contain" })
                     .toBuffer();
                 const productImageUri = crypto_1.default.randomBytes(32).toString("hex");
-                console.log(productImageUri);
                 const params = {
-                    Bucket: process.env.BUCKET,
+                    Bucket: process.env.BUCKET_NAME,
                     Key: productImageUri,
                     ContentType: productImage === null || productImage === void 0 ? void 0 : productImage.mimetype,
-                    Buffer: sharpBuff,
+                    Body: sharpBuff,
                 };
                 const img = new client_s3_1.PutObjectCommand(params);
                 yield s3clientHelper_1.default.send(img);
@@ -160,10 +159,14 @@ class SellersController {
                     productImageUri = foundProduct.productImageUri;
                 }
                 else {
+                    productImageUri = foundProduct.productImageUri;
+                    const imgBuf = yield (0, sharp_1.default)((_a = req.file) === null || _a === void 0 ? void 0 : _a.buffer)
+                        .resize({ width: 1, height: 1090, fit: "contain" })
+                        .toBuffer();
                     const params = {
-                        Key: foundProduct.productImageUri,
+                        Key: productImageUri,
                         Bucket: process.env.BUCKET_NAME,
-                        Buffer: (_a = req.file) === null || _a === void 0 ? void 0 : _a.buffer,
+                        Body: imgBuf,
                         ContentType: (_b = req.file) === null || _b === void 0 ? void 0 : _b.mimetype,
                     };
                     const obj = new client_s3_1.PutObjectCommand(params);

@@ -86,9 +86,10 @@ node_cron_1.default.schedule("0 * * * * ", () => __awaiter(void 0, void 0, void 
         }
     });
 }));
+app.use((0, multer_1.default)({ storage, fileFilter }).single("productImageUri"));
 app.use(shopRoute_1.default);
 app.use(signupRoute_1.default);
-app.use((0, multer_1.default)({ storage }).single("productImageUri"), sellersRouter_1.default);
+app.use(sellersRouter_1.default);
 app.use(changeDateRoute_1.default);
 app.use(logisticRoute_1.default);
 wss.on("connection", (socket) => {

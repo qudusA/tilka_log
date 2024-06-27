@@ -34,6 +34,8 @@ const generateToken_1 = __importDefault(require("../utils/generateToken"));
 const verifyToken_1 = __importDefault(require("../utils/verifyToken"));
 const userModel_1 = __importDefault(require("../models/userModel"));
 const ErrorResponse_1 = require("../response/error/ErrorResponse");
+const tokenModel_1 = __importDefault(require("../models/tokenModel"));
+const sequelize_2 = require("sequelize");
 class SignUpController {
     constructor() { }
     postSignUp(req, res, next) {
@@ -167,22 +169,112 @@ class SignUpController {
                 const doMatch = yield bcrypt_1.default.compare(password, foundUser.password);
                 if (!doMatch)
                     throw new ErrorResponse_1.ErrorResponse("invalid email or password....", "error", 404, {});
-                const jwToken = yield jsonwebtoken_1.default.sign({
+                const userToken = yield tokenModel_1.default.findAll({
+                    where: {
+                        expirationTime: { [sequelize_2.Op.lt]: Date.now() },
+                        userId: foundUser.id,
+                        isTokenValid: true,
+                    },
+                });
+                if (userToken.length > 1) {
+                    for (const foundTok of userToken) {
+                        yield foundTok.destroy();
+                    }
+                }
+                const refreshJwToken = yield jsonwebtoken_1.default.sign({
                     email,
                     userId: foundUser.id,
                     isUserVerified: foundUser.isVerified,
                     role: foundUser.role,
-                }, process.env.TOKEN_SECRET, { expiresIn: "1h" });
+                }, process.env.TOKEN_SECRET, { expiresIn: "1d" });
+                yield foundUser.createToken({
+                    token: refreshJwToken,
+                    expirationTime: new Date(Date.now() + 1000 * 60 * 60 * 24),
+                }, transaction);
+                const accessJwToken = yield jsonwebtoken_1.default.sign({
+                    email,
+                    userId: foundUser.id,
+                    isUserVerified: foundUser.isVerified,
+                    role: foundUser.role,
+                }, process.env.TOKEN_SECRET, { expiresIn: "5m" });
                 yield transaction.commit();
                 res.status(200).json({
                     status: "success",
                     statusCode: 200,
                     message: "login",
-                    data: jwToken,
+                    data: { accessJwToken, refreshJwToken },
                 });
             }
             catch (error) {
                 yield transaction.rollback();
+                next(error);
+            }
+        });
+    }
+    postLogOut(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const transaction = yield sequelize_1.default.transaction();
+            try {
+                const { refreshJwToken } = req.body;
+                const foundToken = yield tokenModel_1.default.findOne({
+                    where: { token: refreshJwToken, userId: req.userId },
+                });
+                if (!foundToken) {
+                    return res.status(401).json({
+                        message: "No token found",
+                        status: "error",
+                        statusCode: 401,
+                        data: {},
+                    });
+                }
+                yield foundToken.destroy();
+                transaction.commit();
+                res.status(200).json({
+                    message: "logout successful",
+                    status: "success",
+                    statusCode: 200,
+                    data: {},
+                });
+            }
+            catch (error) {
+                transaction.rollback();
+                next(error);
+            }
+        });
+    }
+    refreshToken(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { refreshToken } = req.body;
+                if (!refreshToken) {
+                    return res.status(401).json({
+                        message: "No token provided",
+                        status: "error",
+                        statusCode: 401,
+                        data: {},
+                    });
+                }
+                const foundToken = yield tokenModel_1.default.findOne({
+                    where: { token: refreshToken, userId: req.userId },
+                });
+                if (!foundToken) {
+                    const error = new ErrorResponse_1.ErrorResponse("unAuthorized request", "unAuthorized", 401, {});
+                    return res.status(401).json(error);
+                }
+                const decoded = (yield jsonwebtoken_1.default.verify(refreshToken, process.env.TOKEN_SECRET));
+                if (!decoded) {
+                    const error = new ErrorResponse_1.ErrorResponse("unAuthorized request", "unAuthorized", 401, {});
+                    return res.status(401).json(error);
+                }
+                const newAccessToken = jsonwebtoken_1.default.sign({
+                    email: decoded.email,
+                    userId: decoded.userId,
+                    isUserVerified: decoded.isUserVerified,
+                    role: decoded.role,
+                }, process.env.TOKEN_SECRET, { expiresIn: "5m" });
+                res.status(200).json({ accessToken: newAccessToken });
+            }
+            catch (error) {
                 next(error);
             }
         });

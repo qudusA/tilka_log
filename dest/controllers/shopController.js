@@ -53,13 +53,14 @@ class ShopController {
                     const url = yield (0, s3_request_presigner_1.getSignedUrl)(s3clientHelper_1.default, img, {
                         expiresIn: 3600,
                     });
+                    console.log(item.productImageUri);
                     item.productImageUri = url;
                 }
                 res.status(200).json({
                     message: "successful",
                     status: "success",
                     statusCode: 200,
-                    data: Object.assign({}, allProduct),
+                    data: allProduct,
                 });
             }
             catch (error) {
@@ -75,13 +76,21 @@ class ShopController {
                     raw: true,
                 });
                 if (!foundProduct) {
-                    res.status(404).json({
+                    return res.status(404).json({
                         message: "product not found",
                         status: "error",
                         statusCode: 404,
                         data: {},
                     });
                 }
+                const img = new client_s3_1.GetObjectCommand({
+                    Key: foundProduct.productImageUri,
+                    Bucket: process.env.BUCKET_NAME,
+                });
+                const url = yield (0, s3_request_presigner_1.getSignedUrl)(s3clientHelper_1.default, img, {
+                    expiresIn: 3600,
+                });
+                foundProduct.productImageUri = url;
                 res.status(200).json({
                     message: "successful",
                     status: "success",

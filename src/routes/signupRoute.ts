@@ -5,6 +5,7 @@ import { ErrorResponse } from "../response/error/ErrorResponse";
 
 import { SignUpController } from "../controllers/signupController";
 import axios from "axios";
+import Auth from "../middleware/auth";
 
 const {
   postSignUp,
@@ -12,6 +13,8 @@ const {
   postLogin,
   postForgetPassword,
   postPasswordReset,
+  postLogOut,
+  refreshToken,
 } = new SignUpController();
 
 const router = Router();
@@ -205,6 +208,12 @@ router.post(
       }),
   ],
   postLogin
+);
+
+router.route("/logout").post(Auth, postLogOut);
+router.route("/refreshtoken").get(
+  // Auth,
+  refreshToken
 );
 
 router.post(

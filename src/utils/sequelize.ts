@@ -28,12 +28,6 @@ export default sequelize;
 //     dialect: "postgres",
 //     port: +process.env.POSTGRES_PORT!,
 //     host: process.env.POSTGRES_HOST!,
-//     // dialectOptions: {
-//     //   ssl: {
-//     //     require: true,
-//     //     rejectUnauthorized: false,
-//     //   },
-//     // },
 //   }
 // );
 

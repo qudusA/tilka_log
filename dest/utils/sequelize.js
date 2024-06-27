@@ -23,11 +23,5 @@ const sequelize = new sequelize_1.Sequelize(process.env.POSTGRES_DATABASE, proce
     dialect: "postgres",
     port: +process.env.POSTGRES_PORT,
     host: process.env.POSTGRES_HOST,
-    // dialectOptions: {
-    //   ssl: {
-    //     require: true,
-    //     rejectUnauthorized: false,
-    //   },
-    // },
 });
 exports.default = sequelize;

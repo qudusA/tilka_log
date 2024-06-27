@@ -3,3 +3,4 @@
 nodemon.json
 node_modules/
 docker-compose.yml
+config/

@@ -14,10 +14,10 @@
     "dialect": "postgres"
   },
   "production": {
-    "username": "root",
-    "password": null,
+    "username": "tilkalogistic",
+    "password": "MurrNxlESNW18BhfugwxxJM2Ky14AuwW",
     "database": "database_production",
-    "host": "127.0.0.1",
+    "host": "dpg-cpsbd5t6l47c73e2uv2g-a.oregon-postgres.render.com",
     "dialect": "postgres"
   }
 }

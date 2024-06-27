@@ -1,4 +1,5 @@
 import { JwtPayload } from "../entity/JwtPayLoad";
+import User from "../models/userModel";
 
 import {
   NextFunction,
@@ -8,11 +9,13 @@ import {
 } from "express-serve-static-core";
 import { ErrorResponse } from "../response/error/ErrorResponse";
 import jsonwebtoken from "jsonwebtoken";
+import Token from "../models/tokenModel";
+import { Ok } from "../response/ok/okResponse";
 
 // class Auth {
-const Auth: RequestHandler = (
+const Auth: RequestHandler = async (
   req: Request,
-  res: Response<ErrorResponse>,
+  res: Response<ErrorResponse | Ok>,
   next: NextFunction
 ) => {
   try {
@@ -64,6 +67,32 @@ const Auth: RequestHandler = (
       return res.status(401).json(error);
     }
 
+    const foundUser: any = await User.findOne({
+      where: { id: decode.userId },
+
+      raw: true,
+      include: [{ model: Token, as: "tokens" }],
+      order: [[{ model: Token, as: "tokens" }, "id", "DESC"]],
+    });
+
+    if (!foundUser) {
+      return res.status(401).json({
+        message: "logged out already",
+        status: "unAuthorized",
+        statusCode: 401,
+        data: {},
+      });
+    }
+
+    if (!foundUser["tokens.isTokenValid"]) {
+      return res.status(401).json({
+        message: "logged out already",
+        status: "unAuthorized",
+        statusCode: 401,
+        data: {},
+      });
+    }
+
     req.userId = decode.userId;
     req.email = decode.email;
     req.isUserVerified = decode.isUserVerified;
@@ -75,6 +104,5 @@ const Auth: RequestHandler = (
     next(error);
   }
 };
-// }
 
 export default Auth;
