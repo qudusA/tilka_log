@@ -1,0 +1,1 @@
+::1 - - [27/Jun/2024:15:09:19 +0000] "POST /admin/assign-delivery/%7B%7BdriverId%7D%7D?orderIds=1&orderIds=2&orderIds=3&orderIds=4 HTTP/1.1" 500 25 "-" "PostmanRuntime/7.39.0"

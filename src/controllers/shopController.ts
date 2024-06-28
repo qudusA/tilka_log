@@ -1,21 +1,19 @@
 import { Request, Response, NextFunction } from "express-serve-static-core";
-import ProductModel, { ProductAttribute } from "../models/product";
+import ProductModel from "../models/product";
 import { Ok } from "../response/ok/okResponse";
 
 import cartModel from "../models/cartsModel";
 import sequelize from "../utils/sequelize";
 import { ErrorResponse } from "../response/error/ErrorResponse";
-import CartItems, { CartsItemsType, combinedType } from "../models/cartsItems";
-import { client } from "../utils/paypalClient";
+import CartItems, { combinedType } from "../models/cartsItems";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import paypal from "paypal-rest-sdk";
-import Order from "../models/order";
 import User from "../models/userModel";
 import Address from "../models/addressModel";
-import { Sequelize, UniqueConstraintError } from "sequelize";
-import OrderItem, { OrderItemAttribute } from "../models/orderItems";
+import { UniqueConstraintError } from "sequelize";
+import OrderItem from "../models/orderItems";
 import { validationResult } from "express-validator";
 import s3clientHelper from "../utils/s3clientHelper";
 
@@ -34,8 +32,6 @@ export default class ShopController {
         raw: true,
       });
       if (allProduct.length <= 0) {
-        // const err = new ErrorResponse("no product found", "200", 200, {});
-        // return res.status(200).json(err);
         return res.status(200).json({
           message: "no product found",
           status: "success",
@@ -298,7 +294,6 @@ export default class ShopController {
       });
 
       if (cartItems.length < 1) {
-        // const err = new ErrorResponse(, "404", 404, {});
         return res.status(404).json({
           message: "no item in cart...",
           status: "404",
@@ -325,8 +320,6 @@ export default class ShopController {
         }, 0);
 
       if (cartItems.length === 0) {
-        // const err = new ErrorResponse("no item in cart...", "404", 404, {});
-        // return res.status(404).json(err);
         return res.status(200).json({
           message: "no item in cart...",
           status: "success",
@@ -441,99 +434,6 @@ export default class ShopController {
       }
     }
   }
-
-  // static async addCartItemsToOrder(
-  //   req: Request,
-  //   res: Response,
-  //   next: NextFunction
-  // ) {
-  //   try {
-  //     const userCart = await cartModel.findOne({
-  //       where: { userId: req.userId },
-  //       include: [
-  //         {
-  //           model: CartItems,
-  //           as: "cartItems",
-  //           include: [
-  //             {
-  //               model: ProductModel,
-  //               as: "product",
-  //             },
-  //           ],
-  //         },
-  //       ],
-  //     });
-
-  //     if (!userCart) {
-  //       console.log("User cart not found");
-  //       const err = new ErrorResponse("no item in cart...", "404", 404, {});
-  //       return res.status(404).json(err);
-  //     }
-
-  //     type val = {
-  //       id: number;
-  //       productName: string;
-  //       productId: number;
-  //       quantity: number;
-  //       cartId: number;
-  //       createdAt: Date;
-  //       updatedAt: Date;
-  //       product: { productPrice: number };
-  //     };
-
-  //     const [id, userId, cartItems] = Object.values(userCart.toJSON());
-  //     console.log(cartItems.cartId);
-
-  //     const totalValue: number = cartItems.reduce(
-  //       (acc: number, cur: val, _indx: number, _arr: []) => {
-  //         acc += +(cur.product.productPrice * cur.quantity);
-  //         return acc;
-  //       },
-  //       0
-  //     );
-
-  //     const createOrder = async () => {
-  //       const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
-  //       request.requestBody({
-  //         intent: "CAPTURE",
-  //         purchase_units: [
-  //           {
-  //             amount: {
-  //               currency_code: "NGN", // Set the currency to NGN
-  //               value: totalValue.toFixed(2),
-  //             },
-  //             description: "payment for booking a session with the doctor",
-  //             items: cartItems.map((item: val) => ({
-  //               name: item.productName,
-  //               sku: item.productId.toString(),
-  //               unit_amount: {
-  //                 currency_code: "NGN", // Set the currency to NGN
-  //                 value: item.product.productPrice.toFixed(2),
-  //               },
-  //               quantity: item.quantity.toString(),
-  //             })),
-  //           },
-  //         ],
-  //         application_context: {
-  //           return_url: `http://localhost:3000/order/success/${id}?total=${totalValue}`,
-  //           cancel_url: "http://localhost:3000/order/cancel",
-  //         },
-  //       });
-
-  //       return await client().execute(request);
-  //     };
-
-  //     const order = await createOrder();
-  //     res
-  //       .status(200)
-  //       .json({
-  //         redirect: order.result.links.find((link) => link.rel === "approve")
-  //           .href,
-  //       });
-  //   } catch (error) {
-  //     next(error);
-  //   }
-  // }
 
   static async addCartItemsToOrder(
     req: Request,

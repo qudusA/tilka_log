@@ -8,17 +8,13 @@ import jwt from "jsonwebtoken";
 import sequelize from "../utils/sequelize";
 import GenerateToken from "../utils/generateToken";
 import VerifyToken from "../utils/verifyToken";
-import InputValidation from "../utils/inputValidation";
 
 import userModel from "../models/userModel";
-import tokenModel from "../models/tokenModel";
-import Address from "../models/addressModel";
 import { SignupEntity } from "../entity/signupEntity";
 import { Ok } from "../response/ok/okResponse";
 import { ErrorResponse } from "../response/error/ErrorResponse";
 import Token from "../models/tokenModel";
 import { JwtPayload } from "../entity/JwtPayLoad";
-import { Op } from "sequelize";
 
 export class SignUpController {
   private static BASE_URL = process.env.BASE_URL || "http://localhost:3000";
