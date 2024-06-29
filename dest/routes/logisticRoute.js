@@ -9,7 +9,7 @@ const logisticController_1 = __importDefault(require("../controllers/logisticCon
 const auth_1 = __importDefault(require("../middleware/auth"));
 const { shearDriverLocation, assignDeliveryToDriver, 
 // postNonProcessOrders,
-trackDriverLocation, sendPackage, getAllAssingedDelivery, getAllPackages, getPackageToEdit, updateWeight, } = logisticController_1.default;
+trackDriverLocation, postDelivery, sendPackage, getAllAssingedDelivery, getAllPackages, getPackageToEdit, updateWeight, } = logisticController_1.default;
 const router = (0, express_1.Router)();
 router.route("/driver/current/location").post([
     (0, express_validator_1.query)("latitude")
@@ -34,6 +34,7 @@ router
     .post(auth_1.default, assignDeliveryToDriver);
 // router.route("/:driverId").post(Auth, postNonProcessOrders);
 router.route("/track-driver-location/:orderId").get(auth_1.default, trackDriverLocation);
+router.route("/delivered/:orderId").post(auth_1.default, postDelivery);
 router
     .route("/user/package")
     .post(auth_1.default, [

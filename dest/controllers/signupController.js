@@ -35,7 +35,6 @@ const verifyToken_1 = __importDefault(require("../utils/verifyToken"));
 const userModel_1 = __importDefault(require("../models/userModel"));
 const ErrorResponse_1 = require("../response/error/ErrorResponse");
 const tokenModel_1 = __importDefault(require("../models/tokenModel"));
-const sequelize_2 = require("sequelize");
 class SignUpController {
     constructor() { }
     postSignUp(req, res, next) {
@@ -171,7 +170,7 @@ class SignUpController {
                     throw new ErrorResponse_1.ErrorResponse("invalid email or password....", "error", 404, {});
                 const userToken = yield tokenModel_1.default.findAll({
                     where: {
-                        expirationTime: { [sequelize_2.Op.lt]: Date.now() },
+                        // expirationTime: { [Op.lt]: Date.now() },
                         userId: foundUser.id,
                         isTokenValid: true,
                     },
@@ -196,7 +195,7 @@ class SignUpController {
                     userId: foundUser.id,
                     isUserVerified: foundUser.isVerified,
                     role: foundUser.role,
-                }, process.env.TOKEN_SECRET, { expiresIn: "5m" });
+                }, process.env.TOKEN_SECRET, { expiresIn: "15m" });
                 yield transaction.commit();
                 res.status(200).json({
                     status: "success",
@@ -255,7 +254,9 @@ class SignUpController {
                     });
                 }
                 const foundToken = yield tokenModel_1.default.findOne({
-                    where: { token: refreshToken, userId: req.userId },
+                    where: {
+                        token: refreshToken, //userId: req.userId
+                    },
                 });
                 if (!foundToken) {
                     const error = new ErrorResponse_1.ErrorResponse("unAuthorized request", "unAuthorized", 401, {});
@@ -271,7 +272,7 @@ class SignUpController {
                     userId: decoded.userId,
                     isUserVerified: decoded.isUserVerified,
                     role: decoded.role,
-                }, process.env.TOKEN_SECRET, { expiresIn: "5m" });
+                }, process.env.TOKEN_SECRET, { expiresIn: "15m" });
                 res.status(200).json({ accessToken: newAccessToken });
             }
             catch (error) {

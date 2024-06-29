@@ -16,6 +16,7 @@ import { UniqueConstraintError } from "sequelize";
 import OrderItem from "../models/orderItems";
 import { validationResult } from "express-validator";
 import s3clientHelper from "../utils/s3clientHelper";
+import { before } from "node:test";
 
 export default class ShopController {
   private static BASE_URL = process.env.BASE_URL || "http://localhost:3000";
@@ -501,8 +502,8 @@ export default class ShopController {
           payment_method: "paypal",
         },
         redirect_urls: {
-          return_url: `${ShopController}/order/success/${id}?total=${totalValue}`,
-          cancel_url: `${ShopController}/order/cancel`,
+          return_url: `${ShopController.BASE_URL}/order/success/${id}?total=${totalValue}`,
+          cancel_url: `${ShopController.BASE_URL}/order/cancel`,
         },
         transactions: [
           {
@@ -532,7 +533,6 @@ export default class ShopController {
           if (error) {
             next(error);
           } else {
-            console.log("Create Payment Response");
             const linkObj = payment.links?.find(
               (linksObj) => linksObj.rel === "approval_url"
             ) as paypal.Link;

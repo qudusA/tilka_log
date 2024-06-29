@@ -36,8 +36,6 @@ class ShopController {
                     raw: true,
                 });
                 if (allProduct.length <= 0) {
-                    // const err = new ErrorResponse("no product found", "200", 200, {});
-                    // return res.status(200).json(err);
                     return res.status(200).json({
                         message: "no product found",
                         status: "success",
@@ -269,7 +267,6 @@ class ShopController {
                     ],
                 });
                 if (cartItems.length < 1) {
-                    // const err = new ErrorResponse(, "404", 404, {});
                     return res.status(404).json({
                         message: "no item in cart...",
                         status: "404",
@@ -283,8 +280,6 @@ class ShopController {
                     return acc + cur.product.productPrice * cur.quantity;
                 }, 0);
                 if (cartItems.length === 0) {
-                    // const err = new ErrorResponse("no item in cart...", "404", 404, {});
-                    // return res.status(404).json(err);
                     return res.status(200).json({
                         message: "no item in cart...",
                         status: "success",
@@ -370,91 +365,6 @@ class ShopController {
             }
         });
     }
-    // static async addCartItemsToOrder(
-    //   req: Request,
-    //   res: Response,
-    //   next: NextFunction
-    // ) {
-    //   try {
-    //     const userCart = await cartModel.findOne({
-    //       where: { userId: req.userId },
-    //       include: [
-    //         {
-    //           model: CartItems,
-    //           as: "cartItems",
-    //           include: [
-    //             {
-    //               model: ProductModel,
-    //               as: "product",
-    //             },
-    //           ],
-    //         },
-    //       ],
-    //     });
-    //     if (!userCart) {
-    //       console.log("User cart not found");
-    //       const err = new ErrorResponse("no item in cart...", "404", 404, {});
-    //       return res.status(404).json(err);
-    //     }
-    //     type val = {
-    //       id: number;
-    //       productName: string;
-    //       productId: number;
-    //       quantity: number;
-    //       cartId: number;
-    //       createdAt: Date;
-    //       updatedAt: Date;
-    //       product: { productPrice: number };
-    //     };
-    //     const [id, userId, cartItems] = Object.values(userCart.toJSON());
-    //     console.log(cartItems.cartId);
-    //     const totalValue: number = cartItems.reduce(
-    //       (acc: number, cur: val, _indx: number, _arr: []) => {
-    //         acc += +(cur.product.productPrice * cur.quantity);
-    //         return acc;
-    //       },
-    //       0
-    //     );
-    //     const createOrder = async () => {
-    //       const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
-    //       request.requestBody({
-    //         intent: "CAPTURE",
-    //         purchase_units: [
-    //           {
-    //             amount: {
-    //               currency_code: "NGN", // Set the currency to NGN
-    //               value: totalValue.toFixed(2),
-    //             },
-    //             description: "payment for booking a session with the doctor",
-    //             items: cartItems.map((item: val) => ({
-    //               name: item.productName,
-    //               sku: item.productId.toString(),
-    //               unit_amount: {
-    //                 currency_code: "NGN", // Set the currency to NGN
-    //                 value: item.product.productPrice.toFixed(2),
-    //               },
-    //               quantity: item.quantity.toString(),
-    //             })),
-    //           },
-    //         ],
-    //         application_context: {
-    //           return_url: `http://localhost:3000/order/success/${id}?total=${totalValue}`,
-    //           cancel_url: "http://localhost:3000/order/cancel",
-    //         },
-    //       });
-    //       return await client().execute(request);
-    //     };
-    //     const order = await createOrder();
-    //     res
-    //       .status(200)
-    //       .json({
-    //         redirect: order.result.links.find((link) => link.rel === "approve")
-    //           .href,
-    //       });
-    //   } catch (error) {
-    //     next(error);
-    //   }
-    // }
     static addCartItemsToOrder(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
             try {

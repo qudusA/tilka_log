@@ -27,6 +27,7 @@ export default class LogisticController {
     try {
       const { orderIds, packageIds } = req.query;
       const { driverId } = req.params;
+
       if ((!orderIds && !packageIds) || (orderIds && packageIds)) {
         return res.status(400).json({
           message:
@@ -36,140 +37,167 @@ export default class LogisticController {
           data: {},
         });
       }
+
       const foundAdmin = await userModel.findOne({
         where: { id: req.userId, role: "admin" },
       });
       if (!foundAdmin) {
-        transaction.rollback();
-        const error = new ErrorResponse(
-          "admin not found",
-          "not found",
-          404,
-          "admin not found"
-        );
-        return res.status(404).json(error);
+        await transaction.rollback();
+        return res
+          .status(404)
+          .json(
+            new ErrorResponse(
+              "admin not found",
+              "not found",
+              404,
+              "admin not found"
+            )
+          );
       }
 
       const foundDriver = (await userModel.findByPk(driverId)) as userModel;
-      console.log("found driver", foundDriver);
       if (!foundDriver) {
-        transaction.rollback();
-        const error = new ErrorResponse(
-          "driver not found",
-          "not found ",
-          404,
-          "driver not found"
-        );
-        return res.status(404).json(error);
+        await transaction.rollback();
+        return res
+          .status(404)
+          .json(
+            new ErrorResponse(
+              "driver not found",
+              "not found",
+              404,
+              "driver not found"
+            )
+          );
       }
       if (foundDriver.dataValues.role !== "courier") {
-        transaction.rollback();
-        const err = new ErrorResponse(
-          "you can't assign this user",
-          "401",
-          401,
-          "you can't assign this user"
-        );
-        return res.status(401).json(err);
+        await transaction.rollback();
+        return res
+          .status(401)
+          .json(
+            new ErrorResponse(
+              "you can't assign this user",
+              "401",
+              401,
+              "you can't assign this user"
+            )
+          );
       }
 
-      let deliveries: any, count: number;
+      const convertToArray = (value: string | string[]): string[] => {
+        return Array.isArray(value) ? value : [value];
+      };
 
-      if (orderIds) {
-        console.log("not undefine");
-        const nonProccessOrders = await Order.findAll({
+      const processOrders: any = async (items: string[]) => {
+        const foundItems = await Order.findAll({
           where: {
-            id: { [Op.in]: orderIds },
+            id: { [Op.in]: items },
             orderStatus: { [Op.in]: ["On Hold", "Processing"] },
           },
         });
 
-        if (nonProccessOrders.length < 1) {
-          transaction.rollback();
-          const error = new ErrorResponse(
-            "order not found",
-            "not found",
-            404,
-            "order not found"
-          );
-          transaction.rollback();
-          return res.status(404).json(error);
+        if (foundItems.length < 1) {
+          await transaction.rollback();
+          return res
+            .status(404)
+            .json(
+              new ErrorResponse(
+                "order not found",
+                "not found",
+                404,
+                "order not found"
+              )
+            );
         }
 
-        deliveries = await Promise.all(
-          nonProccessOrders.map(async (order) => {
+        const deliveries = await Promise.all(
+          foundItems.map(async (item) => {
             const delivery = await Delivery.create(
               {
-                orderId: order.id,
+                orderId: item.id,
                 driverId: foundDriver.id,
               },
               { transaction }
             );
-
             return delivery;
           })
         );
 
-        [count] = await Order.update(
-          { orderStatus: "Out for Delivery" },
+        const [count] = await Order.update(
           {
-            where: {
-              id: nonProccessOrders.map((order) => order.id),
-            },
+            orderStatus: "Out for Delivery",
+          },
+          {
+            where: { id: foundItems.map((item) => item.id) },
             transaction,
           }
         );
-      } else {
-        console.log("else block");
-        const nonProccessPackage = await Package.findAll({
+
+        return { deliveries, count };
+      };
+
+      const processPackages: any = async (items: string[]) => {
+        const foundItems = await Package.findAll({
           where: {
-            id: { [Op.in]: packageIds },
+            id: { [Op.in]: items },
             status: { [Op.in]: ["On Hold", "Processing"] },
           },
         });
 
-        if (nonProccessPackage.length < 1) {
+        if (foundItems.length < 1) {
           await transaction.rollback();
-          const error = new ErrorResponse(
-            "no items to process",
-            "not found",
-            404,
-            "no package to process"
-          );
-          return res.status(404).json(error);
+          return res
+            .status(404)
+            .json(
+              new ErrorResponse(
+                "package not found",
+                "not found",
+                404,
+                "package not found"
+              )
+            );
         }
 
-        deliveries = await Promise.all(
-          nonProccessPackage.map(async (pack) => {
+        const deliveries = await Promise.all(
+          foundItems.map(async (item) => {
             const delivery = await Delivery.create(
               {
-                packageId: pack.id,
+                packageId: item.id,
                 driverId: foundDriver.id,
               },
               { transaction }
             );
-
             return delivery;
           })
         );
 
-        [count] = await Package.update(
-          { status: "Driver Assiged" },
+        const [count] = await Package.update(
           {
-            where: {
-              id: nonProccessPackage.map((pack) => pack.id),
-            },
+            status: "Driver Assigned",
+          },
+          {
+            where: { id: foundItems.map((item) => item.id) },
             transaction,
           }
         );
+
+        return { deliveries, count };
+      };
+
+      let result;
+      if (orderIds) {
+        const orderIdsArray = convertToArray(orderIds);
+        result = await processOrders(orderIdsArray);
+      } else if (packageIds) {
+        const packageIdsArray = convertToArray(packageIds);
+        result = await processPackages(packageIdsArray);
       }
 
-      transaction.commit();
+      await transaction.commit();
       res.status(201).json({
-        message: `${count} data creation successful`,
+        message: `${result?.count} data creation successful`,
         status: "created",
         statusCode: 201,
-        data: deliveries,
+        data: result?.deliveries,
       });
     } catch (error: any) {
       await transaction.rollback();
@@ -352,6 +380,69 @@ export default class LogisticController {
         data: { lat: latitude, lon: longitude },
       });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  static async postDelivery(
+    req: Request<{ orderId: string }, {}, {}, { delivered: string }>,
+    res: Response<Ok>,
+    next: NextFunction
+  ) {
+    const foundDriver = await userModel.findOne({
+      where: { id: req.userId, role: "courier" },
+    });
+
+    // const foundDriver = await userModel.findOne({
+    //   where: {
+    //     id: req.userId,
+    //     [Op.or]: [
+    //       { role: "courier" },
+    //       { role: "admin" }
+    //     ]
+    //   }
+    // });
+
+    if (!foundDriver) {
+      return res.status(401).json({
+        message: "you are not allow to perform this task...",
+        status: "unAuthorized",
+        statusCode: 401,
+        data: {},
+      });
+    }
+    console.log(foundDriver);
+    const transaction = await sequelize.transaction();
+    try {
+      const { orderId } = req.params;
+      const { delivered } = req.query;
+      if (!Boolean(delivered)) {
+        await Order.update(
+          { orderStatus: "not Delivered" },
+          { where: { id: orderId }, transaction }
+        );
+        transaction.commit();
+        return res.status(200).json({
+          message: "item not delivered",
+          status: "success",
+          statusCode: 200,
+          data: {},
+        });
+      }
+      await Order.update(
+        { orderStatus: "Delivered" },
+        { where: { id: orderId }, transaction }
+      );
+
+      transaction.commit();
+      res.status(200).json({
+        message: "item delivered",
+        status: "success",
+        statusCode: 200,
+        data: {},
+      });
+    } catch (error) {
+      transaction.rollback();
       next(error);
     }
   }

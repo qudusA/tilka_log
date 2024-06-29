@@ -9,6 +9,7 @@ const {
   assignDeliveryToDriver,
   // postNonProcessOrders,
   trackDriverLocation,
+  postDelivery,
   sendPackage,
   getAllAssingedDelivery,
   getAllPackages,
@@ -47,6 +48,7 @@ router
 
 // router.route("/:driverId").post(Auth, postNonProcessOrders);
 router.route("/track-driver-location/:orderId").get(Auth, trackDriverLocation);
+router.route("/delivered/:orderId").post(Auth, postDelivery);
 
 router
   .route("/user/package")

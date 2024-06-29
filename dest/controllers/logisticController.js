@@ -57,10 +57,8 @@ class LogisticController {
                     const err = new ErrorResponse_1.ErrorResponse("you can't assign this user", "401", 401, "you can't assign this user");
                     return res.status(401).json(err);
                 }
-                // let nonProccessOrders = undefined;
                 let deliveries, count;
                 if (orderIds) {
-                    console.log("not undefine");
                     const nonProccessOrders = yield order_1.default.findAll({
                         where: {
                             id: { [sequelize_2.Op.in]: orderIds },
@@ -88,7 +86,6 @@ class LogisticController {
                     });
                 }
                 else {
-                    console.log("else block");
                     const nonProccessPackage = yield package_1.default.findAll({
                         where: {
                             id: { [sequelize_2.Op.in]: packageIds },
@@ -135,7 +132,6 @@ class LogisticController {
                 const error = new ErrorResponse_1.ErrorResponse("invalide data", "error", 422, err.array());
                 return res.status(422).json(error);
             }
-            // const { orderId } = req.params;
             const transaction = yield sequelize_1.default.transaction();
             try {
                 const { latitude, longitude, orderId, packageId } = req.query;
@@ -217,73 +213,6 @@ class LogisticController {
             }
         });
     }
-    // static async assignDeliveryToDriver(
-    //   req: Request<{ driverId: string; orderId: string }>,
-    //   res: Response<Ok | ErrorResponse>,
-    //   next: NextFunction
-    // ) {
-    //   const transaction = await sequelize.transaction();
-    //   try {
-    //     const { driverId, orderId } = req.params;
-    //     const foundAdmin = await userModel.findByPk(req.userId);
-    //     if (!foundAdmin) {
-    //       transaction.rollback();
-    //       const err = new ErrorResponse("user not found", "404", 404, {});
-    //       return res.status(404).json(err);
-    //     }
-    //     if (foundAdmin.role !== "admin") {
-    //       transaction.rollback();
-    //       const err = new ErrorResponse("unAuthorized task...", "401", 401, {});
-    //       return res.status(401).json(err);
-    //     }
-    //     const foundDriver = await userModel.findByPk(+driverId);
-    //     if (!foundDriver) {
-    //       transaction.rollback();
-    //       const err = new ErrorResponse("driver not found", "404", 404, {});
-    //       return res.status(404).json(err);
-    //     }
-    //     if (foundDriver.role !== "courier") {
-    //       transaction.rollback();
-    //       const err = new ErrorResponse(
-    //         "you can't assign this user",
-    //         "401",
-    //         401,
-    //         {}
-    //       );
-    //       return res.status(401).json(err);
-    //     }
-    //     const foundOrder = await Order.findOne({
-    //       where: {
-    //         id: orderId,
-    //         orderStatus: { [Op.in]: ["On Hold", "Processing"] },
-    //       },
-    //     });
-    //     if (!foundOrder) {
-    //       transaction.rollback();
-    //       return res.status(404).json({
-    //         message: "order already assigned to a driver",
-    //         status: "not found",
-    //         statusCode: 404,
-    //         data: {},
-    //       });
-    //     }
-    //     const delivery = await Delivery.create({
-    //       driverId: +driverId,
-    //       orderId: +orderId,
-    //     });
-    //     await foundOrder.update({ orderStatus: "Out for Delivery" });
-    //     await transaction.commit();
-    //     res.status(201).json({
-    //       message: "delivery assigned to driver",
-    //       status: "success",
-    //       statusCode: 201,
-    //       data: delivery,
-    //     });
-    //   } catch (error) {
-    //     transaction.rollback();
-    //     next(error);
-    //   }
-    // }
     static trackDriverLocation(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
@@ -324,6 +253,48 @@ class LogisticController {
                 });
             }
             catch (error) {
+                next(error);
+            }
+        });
+    }
+    static postDelivery(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const foundDriver = yield userModel_1.default.findOne({
+                where: { id: req.userId, role: "courier" },
+            });
+            if (!foundDriver) {
+                return res.status(401).json({
+                    message: "you are not allow to perform this task...",
+                    status: "unAuthorized",
+                    statusCode: 401,
+                    data: {},
+                });
+            }
+            const transaction = yield sequelize_1.default.transaction();
+            try {
+                const { orderId } = req.params;
+                const { delivered } = req.query;
+                if (!Boolean(delivered)) {
+                    yield order_1.default.update({ orderStatus: "not Delivered" }, { where: { id: +orderId }, transaction });
+                    transaction.commit();
+                    return res.status(200).json({
+                        message: "item not delivered",
+                        status: "success",
+                        statusCode: 200,
+                        data: {},
+                    });
+                }
+                yield order_1.default.update({ orderStatus: "Delivered" }, { where: { id: +orderId }, transaction });
+                transaction.commit();
+                res.status(200).json({
+                    message: "item delivered",
+                    status: "success",
+                    statusCode: 200,
+                    data: {},
+                });
+            }
+            catch (error) {
+                transaction.rollback();
                 next(error);
             }
         });

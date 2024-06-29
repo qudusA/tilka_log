@@ -60,7 +60,8 @@ Package.init(
         "In Transit",
         "On Hold",
         "Available for Pickup",
-        "Delivered"
+        "Delivered",
+        "not Delivered"
       ),
       allowNull: false,
       defaultValue: "Processing",

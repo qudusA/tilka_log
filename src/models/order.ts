@@ -90,6 +90,7 @@ Order.init(
               "On Hold",
               "Available for Pickup",
               "Delivered",
+              "not Delivered",
             ],
           ],
           msg: "input not valid...",

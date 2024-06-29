@@ -182,7 +182,9 @@ router.post("/login", [
     }),
 ], postLogin);
 router.route("/logout").post(auth_1.default, postLogOut);
-router.route("/refreshtoken").get(auth_1.default, refreshToken);
+router.route("/refreshtoken").get(
+// Auth,
+refreshToken);
 router.post("/forgetpassword", [
     (0, express_validator_1.body)("email")
         .trim()

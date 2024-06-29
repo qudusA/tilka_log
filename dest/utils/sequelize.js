@@ -1,6 +1,6 @@
 "use strict";
-// import { Sequelize } from "sequelize";
 Object.defineProperty(exports, "__esModule", { value: true });
+const sequelize_1 = require("sequelize");
 // const sequelize = new Sequelize(
 //   process.env.POSTGRES_DATABASE_PROD!,
 //   process.env.POSTGRES_USER_NAME_PROD!,
@@ -17,8 +17,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 //     },
 //   }
 // );
-// export default sequelize;
-const sequelize_1 = require("sequelize");
 const sequelize = new sequelize_1.Sequelize(process.env.POSTGRES_DATABASE, process.env.POSTGRES_USER_NAME, process.env.POSTGRES_PASSWORD, {
     dialect: "postgres",
     port: +process.env.POSTGRES_PORT,
